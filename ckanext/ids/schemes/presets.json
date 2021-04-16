@@ -1,0 +1,14 @@
+{
+  "scheming_presets_version": 1,
+  "about": "IDS custom scheming field presets",
+  "about_url": "http://github.com/ckan/ckanext-scheming#preset",
+  "presets": [
+    {
+      "preset_name": "package_slug",
+      "values": {
+        "validators": "not_empty unicode name_validator package_name_validator",
+        "form_snippet": "slug.html"
+      }
+    }
+  ]
+}
