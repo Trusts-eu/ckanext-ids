@@ -85,6 +85,7 @@ setup(
     entry_points='''
         [ckan.plugins]
         ids=ckanext.ids.plugin:IdsPlugin
+        ids_job=ckanext.ids.plugin:IdsDummyJobPlugin
 
         [babel.extractors]
         ckan = ckan.lib.extract:extract_ckan

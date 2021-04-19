@@ -25,3 +25,28 @@ class IdsPlugin(plugins.SingletonPlugin):
         })
 
         return schema
+
+# The following code is an example of how we can implement a plugin that performs an action on a specific event.
+# The event is a package read event, show it will be activated whenever a package is read ie. opening the URL of a
+# package on the browser. The plugin implements for this the IPackageController. When this is activated, it enqueues a
+# background job that will execute the print_test method asynchronously and also executes the same method synchronously.
+# If this plugin is enabled, you will see the message 'This is a synchronous test' on the output of the debugging server
+# whenever a package is read. The job queue can be seen if you issue the command
+# 'ckan -c /etc/ckan/debugging.ini jobs list'
+# You can run a worker that will start picking up jobs from the queue list with the command
+# 'ckan -c /etc/ckan/debugging.ini jobs worker'
+# Then on your terminal you will see the messages produced by the job.
+
+
+def print_test(msg):
+    print(msg)
+
+
+class IdsDummyJobPlugin(plugins.SingletonPlugin):
+    plugins.implements(plugins.IPackageController, inherit=True)
+
+    def read(self, entity):
+        toolkit.enqueue_job(print_test, [u'This is an async test'])
+        print_test('This is a synchronous test')
+
+        return entity
