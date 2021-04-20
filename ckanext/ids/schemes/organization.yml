@@ -1,0 +1,48 @@
+scheming_version: 1
+organization_type: organization
+
+fields:
+- field_name: title
+  label: Name
+  validators: ignore_missing unicode
+  form_snippet: large_text.html
+  form_attrs:
+    data-module: slug-preview-target
+  form_placeholder: My Organization
+
+- field_name: name
+  label: URL
+  validators: not_empty unicode name_validator group_name_validator
+  form_snippet: slug.html
+  form_placeholder: my-organization
+
+- field_name: notes
+  label: Description
+  form_snippet: markdown.html
+  form_placeholder: A little information about my organization...
+
+- field_name: url
+  label: Image URL
+  form_placeholder: http://example.com/my-image.jpg
+
+- field_name: department_id
+  label: Department ID
+  form_placeholder: e.g. 1042
+
+- field_name: application_count
+  label: Application count
+  form_placeholder: e.g. 3
+  display_snippet: null
+  form_snippet: null
+
+- field_name: service_count
+  label: Service count
+  form_placeholder: e.g. 3
+  display_snippet: null
+  form_snippet: null
+
+- field_name: dataset_count
+  label: Dataset count
+  form_placeholder: e.g. 3
+  display_snippet: null
+  form_snippet: null

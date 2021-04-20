@@ -1,0 +1,22 @@
+{% ckan_extends %}
+
+{% block nums %}
+        <div class="nums">
+          <dl>
+            <dt>{{ _('Followers') }}</dt>
+            <dd data-module="followers-counter" data-module-id="{{ organization.id }}" data-module-num_followers="{{ organization.num_followers }}">{{ h.SI_number_span(organization.num_followers) }}</dd>
+          </dl>
+          <dl>
+            <dt>{{ _('Datasets') }}</dt>
+            <dd>{{ h.SI_number_span(organization.dataset_count) }}</dd>
+          </dl>
+          <dl>
+            <dt>{{ _('Applications') }}</dt>
+            <dd>{{ h.SI_number_span(organization.application_count) }}</dd>
+          </dl>
+          <dl>
+            <dt>{{ _('Services') }}</dt>
+            <dd>{{ h.SI_number_span(organization.service_count) }}</dd>
+          </dl>
+        </div>
+{% endblock %}

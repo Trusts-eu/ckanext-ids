@@ -1,9 +1,12 @@
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
+from ckan.lib.plugins import DefaultTranslation
 
 
-class IdsPlugin(plugins.SingletonPlugin):
+class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.IConfigurer)
+    plugins.implements(plugins.IOrganizationController, inherit=True)
+    plugins.implements(plugins.ITranslation)
 
     # IConfigurer
 
@@ -15,7 +18,6 @@ class IdsPlugin(plugins.SingletonPlugin):
 
     def update_config_schema(self, schema):
         ignore_missing = toolkit.get_validator('ignore_missing')
-        is_positive_integer = toolkit.get_validator('is_positive_integer')
         is_boolean = toolkit.get_validator('boolean_validator')
 
         schema.update({
@@ -25,6 +27,28 @@ class IdsPlugin(plugins.SingletonPlugin):
         })
 
         return schema
+
+    def before_view(self, pkg_dict):
+        data_application = {
+            'fq': '+type:application +organization:' + pkg_dict['name'],
+            'include_private': True
+        }
+        application_search = toolkit.get_action("package_search")(None, data_application)
+        data_service = {
+            'fq': '+type:service +organization:' + pkg_dict['name'],
+            'include_private': True
+        }
+        service_search = toolkit.get_action("package_search")(None, data_service)
+        data_dataset = {
+            'fq': '+type:dataset +organization:' + pkg_dict['name'],
+            'include_private': True
+        }
+        dataset_search = toolkit.get_action("package_search")(None, data_dataset)
+        pkg_dict['application_count'] = application_search['count']
+        pkg_dict['service_count'] = service_search['count']
+        pkg_dict['dataset_count'] = dataset_search['count']
+        return pkg_dict
+        #return entity
 
 # The following code is an example of how we can implement a plugin that performs an action on a specific event.
 # The event is a package read event, show it will be activated whenever a package is read ie. opening the URL of a
