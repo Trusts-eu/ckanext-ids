@@ -49,6 +49,12 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         pkg_dict['service_count'] = service_search['count']
         pkg_dict['dataset_count'] = dataset_search['count']
         return pkg_dict
+
+    # IBlueprint
+    plugins.implements(plugins.IBlueprint)
+
+    def get_blueprint(self):
+        return [blueprints.ids_actions]
         #return entity
 
 # The following code is an example of how we can implement a plugin that performs an action on a specific event.
@@ -62,9 +68,6 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 # 'ckan -c /etc/ckan/debugging.ini jobs worker'
 # Then on your terminal you will see the messages produced by the job.
 
-
-def print_test(msg):
-    print(msg)
 
 
 class IdsDummyJobPlugin(plugins.SingletonPlugin):

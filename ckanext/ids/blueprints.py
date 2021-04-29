@@ -13,6 +13,11 @@ ids = Blueprint(
     __name__
 )
 
+ids_actions = Blueprint(
+    'ids_actions',
+    __name__
+)
+
 @ids.route('/dataset/<id>/resources/create', methods=['POST'])
 def create(id):
     data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
@@ -38,3 +43,14 @@ def create(id):
 @ids.route('/dataset/<id>/resources/delete', methods=['DELETE'])
 def delete(id):
     return "deleted"
+
+def print_test(msg):
+    print(msg)
+
+@ids_actions.route('/ids/actions/push/<id>', methods=['GET'])
+def push(id):
+    toolkit.enqueue_job(print_test, [u'This is an async test'])
+    print_test('This is a synchronous test')
+    return toolkit.redirect_to('dataset.read',
+                               id=id)
+
