@@ -1,0 +1,9 @@
+multiple_resources:
+  filters: rjsmin
+  output: ckanext-ids/%(version)s_ids_multiple_resources.js
+  contents:
+    - js/resource-upload.js
+multiple_resources_css:
+  output: ckanext-ids/%(version)s_ids_multiple_resources.css
+  contents:
+    - css/resource-upload.css

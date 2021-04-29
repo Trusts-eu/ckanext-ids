@@ -1,0 +1,7 @@
+.resource-upload div input {
+    cursor: pointer;
+    position: absolute;
+    z-index: 1;
+    filter: alpha(opacity=0);
+    opacity: 0;
+}

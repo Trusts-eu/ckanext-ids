@@ -26,7 +26,7 @@ setup(
     url='https://github.com/semantic-web-company/ckanext-ids',
 
     # Author details
-    author='''Sotiris Karampatakissssss''',
+    author='''Sotiris Karampatakis''',
     author_email='''sotiris.karampatakis@semantic-web.com''',
 
     # Choose your license
@@ -86,6 +86,7 @@ setup(
         [ckan.plugins]
         ids=ckanext.ids.plugin:IdsPlugin
         ids_job=ckanext.ids.plugin:IdsDummyJobPlugin
+        ids_dummy=ckanext.ids.plugin:IdsResourcesPlugin
 
         [babel.extractors]
         ckan = ckan.lib.extract:extract_ckan

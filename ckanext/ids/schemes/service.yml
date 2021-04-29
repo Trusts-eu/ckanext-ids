@@ -43,12 +43,7 @@ dataset_fields:
 resource_fields:
 
 - field_name: url
-  label: Resource 1
+  label: Resource
   preset: resource_url_upload
   form_placeholder: http://example.com/example.json
-  upload_label: Photo
-
-- field_name: datetime
-  label: Date Taken
-  label_time: Time Taken
-  preset: datetime
+  upload_label: File

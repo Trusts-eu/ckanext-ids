@@ -1,0 +1,34 @@
+{#
+
+Renders the resources fields
+
+resource_type - the type of the resource
+dataset_type - the dataset type
+schema - the list of groups to render
+
+#}
+{%- for field in schema.resource_fields -%}
+    {%- if field.form_snippet is not none -%}
+      {%- if field.field_name not in data %}
+        {# Set the field default value before rendering but only if
+        it doesn't already exist in data which would mean the form
+        has been submitted. #}
+        {% if field.default_jinja2 %}
+          {% do data.__setitem__(
+            resource_type ~ field.field_name,
+            h.scheming_render_from_string(field.default_jinja2)) %}
+        {% elif field.default %}
+          {% do data.__setitem__(resource_type ~ field.field_name, field.default) %}
+        {% endif %}
+      {% endif -%}
+      {% set sf = dict(field, field_name=resource_type ~ field.field_name, upload_label=resource_type ~ field.upload_label, label=resource_type ~ field.label) %}
+      {%- snippet 'scheming/snippets/form_field.html',
+        field=sf,
+        data=data,
+        errors=errors,
+        licenses=c.licenses,
+        entity_type='dataset',
+        object_type=dataset_type
+      -%}
+    {%- endif -%}
+{%- endfor -%}
