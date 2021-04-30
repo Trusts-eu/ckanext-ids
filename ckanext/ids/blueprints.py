@@ -1,3 +1,5 @@
+import json
+
 from flask import Blueprint, jsonify, make_response, request
 import ckan.plugins.toolkit as toolkit
 import ckan.logic as logic
@@ -49,8 +51,13 @@ def print_test(msg):
 
 @ids_actions.route('/ids/actions/push/<id>', methods=['GET'])
 def push(id):
-    toolkit.enqueue_job(print_test, [u'This is an async test'])
-    print_test('This is a synchronous test')
-    return toolkit.redirect_to('dataset.read',
-                               id=id)
+    package_meta = toolkit.get_action("package_show")(None, {"id":id})
+    response = toolkit.enqueue_job(print_test, [package_meta])
+    print_test(package_meta)
+    return json.dumps(response.id)
 
+## TODO: Remove when AJAX script is in place
+@ids_actions.route('/ids/view/push/<id>', methods=['GET'])
+def push_view(id):
+    response = push(id)
+    return toolkit.redirect_to('dataset.read', id=id)
