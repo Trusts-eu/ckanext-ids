@@ -46,9 +46,4 @@ resource_fields:
   label: Resource 1
   preset: resource_url_upload
   form_placeholder: http://example.com/example.json
-  upload_label: Photo
-
-- field_name: datetime
-  label: Date Taken
-  label_time: Time Taken
-  preset: datetime
+  upload_label: ""

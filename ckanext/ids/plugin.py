@@ -74,8 +74,8 @@ class IdsDummyJobPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IPackageController, inherit=True)
 
     def read(self, entity):
-        toolkit.enqueue_job(print_test, [u'This is an async test'])
-        print_test('This is a synchronous test')
+        toolkit.enqueue_job(blueprints.print_test, [u'This is an async test'])
+        blueprints.print_test('This is a synchronous test')
 
         return entity
 
