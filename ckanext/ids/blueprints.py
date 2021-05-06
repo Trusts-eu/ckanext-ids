@@ -6,6 +6,8 @@ import ckan.logic as logic
 import ckan.lib.navl.dictization_functions as dict_fns
 import ckan.lib.helpers as h
 import ckan.lib.base as base
+from six.moves import urllib
+import requests
 from ckan.common import _
 from werkzeug.datastructures import ImmutableMultiDict
 
@@ -84,38 +86,47 @@ def create(id):
 def delete(id):
     return "deleted"
 
-def print_test(msg):
-    print(msg)
-#    push_to_ckan(dataset_dict=msg)
+def push_package_task(dataset_dict):
+    action= 'package_create'
+    push_to_central(data=dataset_dict, action=action)
 
-# def push_to_ckan(dataset_dict, node_url=''):
-#     data_string = urllib.quote(json.dumps(dataset_dict))
-#     # We'll use the package_create function to create a new dataset.
-#     url = node_url + 'api/action/package_create'
-#     url = 'https://google.com/'
-#     request = urllib2.Request(url)
-#     # Creating a dataset requires an authorization header.
-#     # Replace *** with your API key, from your user account on the CKAN site
-#     # that you're creating the dataset on.
-#     request.add_header('Authorization', '***')
-#     # Make the HTTP request.
-#     response = urllib2.urlopen(request, data_string)
-#     assert response.code == 200
-#     # Use the json module to load CKAN's response into a dictionary.
-#     response_dict = json.loads(response.read())
-#     assert response_dict['success'] is True
-#     # package_create returns the created package as its result.
+def push_organization_task(organization_dict):
+    action= 'organization_create'
+    push_to_central(data=organization_dict, action=action)
 
-@ids_actions.route('/ids/actions/push/<id>', methods=['GET'])
-def push(id):
+def push_to_central(data, action):
+    # We'll use the package_create function to create a new dataset.
+    node_url = "http://localhost:8282/central-core/ckan/5000/api/3/action/"
+    url = node_url + action
+    # we need to check if the organization exists
+    response = requests.post(url, json = data)
+    #handle error
+    assert response.status_code == 200
+
+@ids_actions.route('/ids/actions/push_package/<id>', methods=['GET'])
+def push_package(id):
     package_meta = toolkit.get_action("package_show")(None, {"id":id})
-    response = toolkit.enqueue_job(print_test, [package_meta])
-    print_test(package_meta)
+    response = toolkit.enqueue_job(push_package_task, [package_meta])
+    push_package_task(package_meta)
     return json.dumps(response.id)
 
 ## TODO: Remove when AJAX script is in place
-@ids_actions.route('/ids/view/push/<id>', methods=['GET'])
-def push_view(id):
-    response = push(id)
+@ids_actions.route('/ids/view/push_package/<id>', methods=['GET'])
+def push_package_view(id):
+    response = push_package(id)
     h.flash_success( _('Object pushed successfuly to Central node, jobId: ') + response)
     return toolkit.redirect_to('dataset.read', id=id)
+
+@ids_actions.route('/ids/actions/push_organization/<id>', methods=['GET'])
+def push_organization(id):
+    organization_meta = toolkit.get_action("organization_show")(None, {"id":id})
+    response = toolkit.enqueue_job(push_organization_task, [organization_meta])
+    push_organization_task(organization_meta)
+    return json.dumps(response.id)
+
+## TODO: Remove when AJAX script is in place
+@ids_actions.route('/ids/view/push_organization/<id>', methods=['GET'])
+def push_organization_view(id):
+    response = push_organization(id)
+    h.flash_success( _('Object pushed successfuly to Central node, jobId: ') + response)
+    return toolkit.redirect_to('organization.read', id=id)
