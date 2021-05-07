@@ -3,12 +3,12 @@ import json
 from flask import Blueprint, jsonify, make_response, request
 import ckan.plugins.toolkit as toolkit
 import ckan.logic as logic
+from ckan.common import _, config
 import ckan.lib.navl.dictization_functions as dict_fns
 import ckan.lib.helpers as h
 import ckan.lib.base as base
-from six.moves import urllib
 import requests
-from ckan.common import _
+
 from werkzeug.datastructures import ImmutableMultiDict
 
 tuplize_dict = logic.tuplize_dict
@@ -96,7 +96,7 @@ def push_organization_task(organization_dict):
 
 def push_to_central(data, action):
     # We'll use the package_create function to create a new dataset.
-    node_url = "http://localhost:8282/central-core/ckan/5000/api/3/action/"
+    node_url = config.get('ckanext.ids.central_node_url')
     url = node_url + action
     # we need to check if the organization exists
     response = requests.post(url, json = data)

@@ -63,9 +63,9 @@ None at present
 
 **TODO:** Document any optional config settings here. For example:
 
-	# The minimum number of hours to wait before re-checking a resource
-	# (optional, default: 24).
-	ckanext.ids.some_setting = some_default_value
+	# The URL of the central node where packages and organizations will be pushed
+	# (required).
+	ckanext.ids.central_node_url = http://localhost:8282/central-core/ckan/5000/api/3/action/
 
 
 ## Developer installation

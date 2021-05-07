@@ -80,8 +80,21 @@ class IdsDummyJobPlugin(plugins.SingletonPlugin):
         return entity
 
 
+def assert_config():
+    central_node_url_key = 'ckanext.ids.central_node_url'
+    try:
+        assert toolkit.config.get(central_node_url_key) is not None
+    except AssertionError:
+        raise EnvironmentError('Configuration property {0} was not set. Please fix your configuration.'.format(central_node_url_key))
+    try:
+        assert toolkit.config.get('ckanext.ids.central_node_url') is not ''
+    except AssertionError:
+        raise EnvironmentError('Configuration property {0} was set but was empty string. Please fix your configuration.'.format(central_node_url_key))
+
+
 class IdsResourcesPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IBlueprint)
+    assert_config()
 
     def get_blueprint(self):
         return [blueprints.ids]
