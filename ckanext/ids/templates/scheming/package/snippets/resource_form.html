@@ -35,6 +35,9 @@
     <p>
       This is a dataset!
     </p>
+      {%- snippet 'snippets/resource_fields.html', resource_type='deployment', schema=schema, dataset_type=dataset_type, data=data, errors=errors -%}
+      {%- snippet 'snippets/resource_fields.html', resource_type='configuration', schema=schema, dataset_type=dataset_type, data=data, errors=errors -%}
+      {%- snippet 'snippets/resource_fields.html', resource_type='readme', schema=schema, dataset_type=dataset_type, data=data, errors=errors -%}
   {%- endif -%}
 
 

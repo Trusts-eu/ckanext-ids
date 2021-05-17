@@ -106,6 +106,8 @@ def push_to_central(data, action):
 @ids_actions.route('/ids/actions/push_package/<id>', methods=['GET'])
 def push_package(id):
     package_meta = toolkit.get_action("package_show")(None, {"id":id})
+    for index, resource in enumerate(package_meta['resources']):
+        package_meta['resources'][index]['url_type'] = ''
     response = toolkit.enqueue_job(push_package_task, [package_meta])
     push_package_task(package_meta)
     return json.dumps(response.id)
