@@ -59,13 +59,17 @@ To install ckanext-ids:
 
 ## Config settings
 
-None at present
-
-**TODO:** Document any optional config settings here. For example:
 
 	# The URL of the central node where packages and organizations will be pushed
 	# (required).
 	ckanext.ids.central_node_url = http://localhost:8282/central-core/ckan/5000/api/3/action/
+    # The name of the local node 
+    # (required)
+    ckanext.ids.local_node_name = provider-core
+    # The url of the local trusted connector
+    # (required)
+    ckanext.ids.trusted_connector_url = http://localhost:8282/
+
 
 
 ## Developer installation

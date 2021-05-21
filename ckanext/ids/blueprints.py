@@ -103,11 +103,16 @@ def push_to_central(data, action):
     #handle error
     assert response.status_code == 200
 
+def transform_url(url):
+    resource_url_part= url.split(toolkit.config.get('ckan.site_url'),1) [1]
+    return toolkit.config.get('ckanext.ids.trusted_connector_url') + toolkit.config.get('ckanext.ids.local_node_name') + "/ckan/5000" + resource_url_part
+
 @ids_actions.route('/ids/actions/push_package/<id>', methods=['GET'])
 def push_package(id):
     package_meta = toolkit.get_action("package_show")(None, {"id":id})
     for index, resource in enumerate(package_meta['resources']):
         package_meta['resources'][index]['url_type'] = ''
+        package_meta['resources'][index]['url'] = transform_url(resource['url'])
     response = toolkit.enqueue_job(push_package_task, [package_meta])
     push_package_task(package_meta)
     return json.dumps(response.id)
