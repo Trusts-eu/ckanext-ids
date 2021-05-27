@@ -26,6 +26,11 @@ ids_actions = Blueprint(
     __name__
 )
 
+
+def request_contains_mandatory_files():
+    return request.files['Deployment file (docker-compose.xml) - mandatory-upload'].filename != ''
+
+
 @ids.route('/dataset/<id>/resources/create', methods=['POST'])
 def create(id):
     # get clean data from the form, data will hold the common meta for all resources

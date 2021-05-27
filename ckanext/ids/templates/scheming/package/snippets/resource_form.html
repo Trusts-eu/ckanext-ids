@@ -30,6 +30,9 @@
     <p>
       This is an application!
     </p>
+  {%- snippet 'snippets/resource_fields.html', resource_type='Deployment file (docker-compose.xml) - mandatory', schema=schema, dataset_type=dataset_type, data=data, errors=errors -%}
+  {%- snippet 'snippets/resource_fields.html', resource_type='Configuration file (.env) - optional', schema=schema, dataset_type=dataset_type, data=data, errors=errors -%}
+  {%- snippet 'snippets/resource_fields.html', resource_type='Routing (.xml) - optional', schema=schema, dataset_type=dataset_type, data=data, errors=errors -%}
   {%- endif -%}
   {%- if dataset_type == 'dataset' -%}
     <p>
