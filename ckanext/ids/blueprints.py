@@ -8,6 +8,7 @@ import ckan.lib.navl.dictization_functions as dict_fns
 import ckan.lib.helpers as h
 import ckan.lib.base as base
 import requests
+import logging
 
 from werkzeug.datastructures import ImmutableMultiDict
 
@@ -26,6 +27,7 @@ ids_actions = Blueprint(
     __name__
 )
 
+log = logging.getLogger(__name__)
 
 def request_contains_mandatory_files():
     return request.files['Deployment file (docker-compose.xml) - mandatory-upload'].filename != ''
@@ -109,8 +111,15 @@ def push_to_central(data, action):
     assert response.status_code == 200
 
 def transform_url(url):
-    resource_url_part= url.split(toolkit.config.get('ckan.site_url'),1) [1]
-    return toolkit.config.get('ckanext.ids.trusted_connector_url') + toolkit.config.get('ckanext.ids.local_node_name') + "/ckan/5000" + resource_url_part
+    site_url = toolkit.config.get('ckan.site_url')
+    log.info("Transforming url: %s", url)
+    log.debug("ckan.site_url is set to: %s", site_url)
+    log.debug(url)
+    # splitting the url based on the ckan.site_url setting
+    resource_url_part= url.split(site_url,1) [1]
+    tranformed_url = toolkit.config.get('ckanext.ids.trusted_connector_url') + toolkit.config.get('ckanext.ids.local_node_name') + "/ckan/5000" + resource_url_part
+    log.info("URL is now: %s", tranformed_url)
+    return tranformed_url
 
 @ids_actions.route('/ids/actions/push_package/<id>', methods=['GET'])
 def push_package(id):

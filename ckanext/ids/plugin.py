@@ -81,14 +81,14 @@ class IdsDummyJobPlugin(plugins.SingletonPlugin):
 
 
 def assert_config():
-    configuration_keys = {'ckanext.ids.central_node_url', 'ckanext.ids.trusted_connector_url', 'ckanext.ids.local_node_name'}
+    configuration_keys = {'ckanext.ids.central_node_url', 'ckanext.ids.trusted_connector_url', 'ckanext.ids.local_node_name', 'ckan.site_url'}
     for key in configuration_keys:
         try:
             assert toolkit.config.get(key) is not None
         except AssertionError:
             raise EnvironmentError('Configuration property {0} was not set. Please fix your configuration.'.format(key))
         try:
-            assert toolkit.config.get('ckanext.ids.central_node_url') is not ''
+            assert toolkit.config.get(key) is not ''
         except AssertionError:
             raise EnvironmentError('Configuration property {0} was set but was empty string. Please fix your configuration.'.format(key))
 
