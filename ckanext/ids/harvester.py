@@ -1,10 +1,11 @@
 import json
 
-import ckan.plugins as p
-import ckan.logic as logic
-import ckan.model as model
 from six.moves.urllib.parse import urlencode
-
+from urllib3.contrib import pyopenssl
+import requests
+from requests.exceptions import HTTPError, RequestException
+import urllib.parse as urlparse
+from urllib.parse import parse_qs
 from ckanext.harvest.harvesters.ckanharvester import CKANHarvester
 
 import logging
@@ -13,8 +14,36 @@ log = logging.getLogger(__name__)
 
 class TrustsHarvester(CKANHarvester):
     '''
-    A Harvester for CKAN instances. Extensd the default from ckan-harvest extension
+    A Harvester for CKAN instances. Extends the default from ckan-harvest extension
     '''
+
+    def flatten_query(self, query_list):
+        flatten = dict()
+        for key, value in query_list:
+            flatten[key] = value
+
+        return flatten
+
+    def _get_content(self, url):
+
+        headers = {}
+        api_key = self.config.get('api_key')
+        if api_key:
+            headers['Authorization'] = api_key
+
+        pyopenssl.inject_into_urllib3()
+        parsed = urlparse.urlparse(url)
+        data = self.flatten_query(urlparse.parse_qsl(parsed.query))
+        url_parsed = parsed.scheme + "://" + parsed.netloc + parsed.path
+        try:
+            http_request = requests.post(url_parsed, json=data, headers=headers)
+        except HTTPError as e:
+            raise ContentFetchError('HTTP error: %s %s' % (e.response.status_code, e.request.url))
+        except RequestException as e:
+            raise ContentFetchError('Request error: %s' % e)
+        except Exception as e:
+            raise ContentFetchError('HTTP general exception: %s' % e)
+        return http_request.text
 
     def _search_for_datasets(self, remote_ckan_base_url, fq_terms=None):
         '''Does a dataset search on a remote CKAN and returns the results.
