@@ -81,7 +81,7 @@ class IdsDummyJobPlugin(plugins.SingletonPlugin):
 
 
 def assert_config():
-    configuration_keys = {'ckanext.ids.central_node_url', 'ckanext.ids.central_node_connector_url', 'ckanext.ids.local_node_name', 'ckan.site_url'}
+    configuration_keys = {'ckanext.ids.trusts_central_node_ckan', 'ckanext.ids.central_node_connector_url', 'ckanext.ids.local_node_name', 'ckan.site_url'}
     for key in configuration_keys:
         try:
             assert toolkit.config.get(key) is not None

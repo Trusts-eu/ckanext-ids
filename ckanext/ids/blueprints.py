@@ -103,10 +103,10 @@ def push_organization_task(organization_dict):
 
 def push_to_central(data, action):
     # We'll use the package_create function to create a new dataset.
-    node_url = config.get('ckanext.ids.central_node_url')
+    node_url = config.get('ckanext.ids.trusts_central_node_ckan')
     url = node_url + action
     # we need to check if the organization exists
-    response = requests.post(url, json = data)
+    response = requests.post(url, json=data)
     #handle error
     assert response.status_code == 200
 

@@ -62,7 +62,7 @@ To install ckanext-ids:
 
 	# The URL of the central node where packages and organizations will be pushed
 	# (required).
-	ckanext.ids.central_node_url = http://localhost:8282/central-core/ckan/5000/api/3/action/
+	ckanext.ids.trusts_central_node_ckan = http://localhost:8282/central-core/ckan/5000/api/3/action/
     # The name of the local node 
     # (required)
     ckanext.ids.local_node_name = provider-core
