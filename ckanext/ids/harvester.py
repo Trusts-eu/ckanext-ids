@@ -6,6 +6,7 @@ import requests
 from requests.exceptions import HTTPError, RequestException
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
+import ckan.plugins.toolkit as toolkit
 from ckanext.harvest.harvesters.ckanharvester import CKANHarvester
 
 import logging
@@ -119,6 +120,28 @@ class TrustsHarvester(CKANHarvester):
             params['start'] = str(int(params['start']) + int(params['rows']))
 
         return pkg_dicts
+
+    def modify_package_dict(self, package_dict, harvest_object):
+
+        for index, resource in enumerate(package_dict['resources']):
+            package_dict['resources'][index]['url'] = self.transform_url(resource['url'])
+
+        return package_dict
+
+    def transform_url(self, url):
+        trusted_connector_port = "8282"
+        site_url = toolkit.config.get('ckan.site_url')
+        log.info("Transforming url: %s", url)
+        log.debug("ckan.site_url is set to: %s", site_url)
+        parsed_site_url = urlparse.urlsplit(site_url)
+        localhost = parsed_site_url.scheme + "://" + parsed_site_url.hostname + ":" + trusted_connector_port
+        log.debug("Local trusted connector is on : %s", localhost)
+        resource_path = urlparse.urlsplit(url)
+        log.debug("Resource path: %s", resource_path.path)
+        # splitting the url based on the ckan.site_url setting
+        tranformed_url = localhost + resource_path.path
+        log.info("URL is now: %s", tranformed_url)
+        return tranformed_url
 
 
 class ContentFetchError(Exception):
