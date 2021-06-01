@@ -117,7 +117,7 @@ def transform_url(url):
     log.debug(url)
     # splitting the url based on the ckan.site_url setting
     resource_url_part= url.split(site_url,1) [1]
-    tranformed_url = toolkit.config.get('ckanext.ids.trusted_connector_url') + toolkit.config.get('ckanext.ids.local_node_name') + "/ckan/5000" + resource_url_part
+    tranformed_url = toolkit.config.get('ckanext.ids.central_node_connector_url') + toolkit.config.get('ckanext.ids.local_node_name') + "/ckan/5000" + resource_url_part
     log.info("URL is now: %s", tranformed_url)
     return tranformed_url
 

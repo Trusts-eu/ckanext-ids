@@ -66,9 +66,9 @@ To install ckanext-ids:
     # The name of the local node 
     # (required)
     ckanext.ids.local_node_name = provider-core
-    # The url of the local trusted connector
+    # The url of the central trusted connector
     # (required)
-    ckanext.ids.trusted_connector_url = http://localhost:8282/
+    ckanext.ids.central_node_connector_url = http://34.77.70.203:8282/
 
 
 
