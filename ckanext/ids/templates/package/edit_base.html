@@ -1,0 +1,6 @@
+{% ckan_extends %}
+
+{% block content_primary_nav %}
+    {{ super() }}
+    {{ h.build_nav_icon('ids_actions.publish', _('Publish'), id=pkg.name) }}
+{% endblock %}

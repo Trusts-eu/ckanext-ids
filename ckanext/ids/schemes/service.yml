@@ -22,6 +22,11 @@ dataset_fields:
   preset: dataset_organization
   display_property : dct:rightsHolder
 
+- field_name: license_id
+  label: License
+  form_snippet: license.html
+  help_text: License definitions and additional information can be found at http://opendefinition.org/
+
 - field_name: theme
   label:
     en: Theme
@@ -46,4 +51,4 @@ resource_fields:
   label: Resource
   preset: resource_url_upload
   form_placeholder: http://example.com/example.json
-  upload_label: File
+  upload_label: ""
