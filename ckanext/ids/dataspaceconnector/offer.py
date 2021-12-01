@@ -30,13 +30,23 @@ class Offer(dict):
     endpointDocumentation: None
     samples: []
     paymentMethod: None
+    catalog_iri: ""
+    offer_iri: ""
 
     def __init__(self, pkg_dict):
         self.title = pkg_dict['title']
         self.keywords = pkg_dict['tags']
         self.publisher = pkg_dict['owner_org']
         self.license = pkg_dict['license_url']
-
+        if "extras" in pkg_dict:
+            for entry in pkg_dict["extras"]:
+                if entry["key"] == "catalog":
+                    self.catalog_iri = entry["value"]
+                if entry["key"] == "offers":
+                    self.offer_iri = entry["value"]
+        else:
+            self.catalog_iri = None
+            self.offer_iri = None
 
 """
 {

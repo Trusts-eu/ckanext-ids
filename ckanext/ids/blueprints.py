@@ -11,6 +11,7 @@ import ckan.plugins as plugins
 import ckan.model as model
 from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.dataspaceconnector.offer import Offer
+from ckanext.ids.dataspaceconnector.resource import Resource
 import requests
 import logging
 
@@ -47,10 +48,10 @@ def create(id):
 
     # add fields ending with url in to_delete dictionary
     for field in data:
-        if field.endswith('url') and len(field) > 3 :
+        if field.endswith('url') and len(field) > 3:
             to_delete.append(field)
 
-    ## these are not needed on the schema so we remove them
+    # these are not needed on the schema so we remove them
 
     for deletable in to_delete:
         del data[deletable]
@@ -87,7 +88,7 @@ def create(id):
     }
     try:
         toolkit.get_action("package_revise")(None, revise_package_dict )
-    ## ulikely to happen, but just to demonstrate error handling
+    # unlikely to happen, but just to demonstrate error handling
     except (ValidationError):
         return base.abort(404, _(u'Dataset not found'))
     # redirect tp dataset read page
@@ -124,34 +125,44 @@ def push_to_dataspace_connector(data):
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
-
-    # this should point to the CKAN URL. The location should be accessible by the local connector container network
-    local_url = "http://192.168.80.1:5000" #FIXME config.get("ckan.site_url") for some reason it always returns the localhost address so hardocoded for now
     local_resource_dataspace_connector = Connector().get_resource_api()
-    extras = []
-    #sync calls to the dataspace connector to create the appropriate objects
-    # this will be constant. It might cause an error if the connector does not persist it's data. A restart should fix the problem
+    # sync calls to the dataspace connector to create the appropriate objects
+    # this will be constant.
+    # It might cause an error if the connector does not persist it's data. A restart should fix the problem
     catalog = config.get("ckanext.ids.connector_catalog_iri")
     # try to populate this with fields from the package
-    offers = local_resource_dataspace_connector.create_offered_resource(Offer(data))
-    local_resource_dataspace_connector.add_resource_to_catalog(catalog, offers)
+    offer = Offer(data)
+    if offer.offer_iri is None:
+        offers = local_resource_dataspace_connector.create_offered_resource(Offer(data))
+        local_resource_dataspace_connector.add_resource_to_catalog(catalog, offers)
+    else:
+        local_resource_dataspace_connector.update_offered_resource(offer)
+        offers = offer.offer_iri
     # FIXME put these in an object and create a nice method
-    extras.append({"key": "catalog", "value": catalog})
-    extras.append({"key": "offers", "value": offers})
+    extras = [{"key": "catalog", "value": catalog}, {"key": "offers", "value": offers}]
     for value in data["resources"]:
-        representation = local_resource_dataspace_connector.create_representation()
         # this has also to run for every resource
-        download_url = local_url + "/" + data["type"] + "/" +\
-                       data["id"] + "/resource/" + value["id"] +\
-                       "/download/" + value["url"].split("download/", 1)[1]
-        artifact = local_resource_dataspace_connector.create_artifact(data={"accessUrl": download_url})
-        local_resource_dataspace_connector.add_representation_to_resource(offers, representation)
-        local_resource_dataspace_connector.add_artifact_to_representation(representation, artifact)
+        resource = Resource(value)
+        if resource.representation_iri is None:
+            representation = local_resource_dataspace_connector.create_representation()
+            local_resource_dataspace_connector.add_representation_to_resource(offers, representation)
+        else:
+            local_resource_dataspace_connector.update_representation(resource)
+            representation = resource.representation_iri
+
+        if resource.artifact_iri is None:
+            artifact = local_resource_dataspace_connector.create_artifact(data={"accessUrl": value["url"]})
+            local_resource_dataspace_connector.add_artifact_to_representation(representation, artifact)
+        else:
+            local_resource_dataspace_connector.update_artifact(resource.artifact_iri, data={"accessUrl": value["url"]})
+            artifact = resource.artifact_iri
+
         # add these on the resource meta
         patch_data = {"id": value["id"], "representation": representation, "artifact": artifact}
         logic.action.patch.resource_patch(context, data_dict=patch_data)
 
-    return toolkit.get_action("package_revise")(context, {"match__id": data["id"], "extras": extras})
+    updated_package = toolkit.get_action("package_patch")(context, {"id": data["id"], "extras": extras})
+    return updated_package
 
 
 def transform_url(url):
@@ -160,30 +171,32 @@ def transform_url(url):
     log.debug("ckan.site_url is set to: %s", site_url)
     log.debug(url)
     # splitting the url based on the ckan.site_url setting
-    resource_url_part= url.split(site_url,1) [1]
-    tranformed_url = toolkit.config.get('ckanext.ids.central_node_connector_url') + toolkit.config.get('ckanext.ids.local_node_name') + "/ckan/5000" + resource_url_part
-    log.info("URL is now: %s", tranformed_url)
-    return tranformed_url
+    resource_url_part = url.split(site_url,1) [1]
+    transformed_url = toolkit.config.get('ckanext.ids.central_node_connector_url') + toolkit.config.get('ckanext.ids.local_node_name') + "/ckan/5000" + resource_url_part
+    log.info("URL is now: %s", transformed_url)
+    return transformed_url
+
 
 @ids_actions.route('/ids/actions/push_package/<id>', methods=['GET'])
 def push_package(id):
     package_meta = toolkit.get_action("package_show")(None, {"id":id})
-    #for index, resource in enumerate(package_meta['resources']):
+    # for index, resource in enumerate(package_meta['resources']):
     #    package_meta['resources'][index]['url_type'] = ''
     #    package_meta['resources'][index]['url'] = transform_url(resource['url'])
     # this is the asynchronous task
-    #response = toolkit.enqueue_job(push_package_task, [package_meta])
+    # response = toolkit.enqueue_job(push_package_task, [package_meta])
     # this is the synchronous task
     return push_package_task(package_meta)
+    # return json.dumps(response.id)
 
-    #return json.dumps(response.id)
 
-## TODO: Remove when AJAX script is in place
+# TODO: Remove when AJAX script is in place
 @ids_actions.route('/ids/view/push_package/<id>', methods=['GET'])
 def push_package_view(id):
     response = push_package(id)
     h.flash_success( _('Object pushed to the DataspaceConnector Catalog.'))
     return toolkit.redirect_to('dataset.read', id=id)
+
 
 @ids_actions.route('/ids/actions/push_organization/<id>', methods=['GET'])
 def push_organization(id):
@@ -192,12 +205,14 @@ def push_organization(id):
     push_organization_task(organization_meta)
     return json.dumps(response.id)
 
-## TODO: Remove when AJAX script is in place
+
+# TODO: Remove when AJAX script is in place
 @ids_actions.route('/ids/view/push_organization/<id>', methods=['GET'])
 def push_organization_view(id):
     response = push_organization(id)
     h.flash_success( _('Object pushed successfully to Central node, jobId: ') + response)
     return toolkit.redirect_to('organization.read', id=id)
+
 
 @ids_actions.route('/ids/view/publish/<id>', methods=['GET'])
 def publish(id, offering_info=None, errors=None):
@@ -209,11 +224,11 @@ def publish(id, offering_info=None, errors=None):
     c.pkg_dict = dataset
     c.offering = {}
     c.errors = {}
-    #return ""
     return toolkit.render('package/publish.html',
                           extra_vars={
                               u'pkg_dict': dataset
                           })
+
 
 def create_or_get_catalog_id():
     local_connector_resource_api = Connector().get_resource_api()

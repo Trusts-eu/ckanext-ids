@@ -47,9 +47,17 @@ class ResourceApi:
         response = self.session.post(self.recipient + "/api/offers", json=data)
         return response.headers["Location"]
 
+    def update_offered_resource(self, data={}):
+        response = self.session.put(data.offer_iri, json=data)
+        return response.status_code == 204
+
     def create_representation(self, data={}):
         response = self.session.post(self.recipient + "/api/representations", json=data)
         return response.headers["Location"]
+
+    def update_representation(self, data={}):
+        response = self.session.put(data.representation_iri, json=data)
+        return response.status_code == 204
 
     def create_artifact(self, data={"value": "SOME LONG VALUE"}):
         response = self.session.post(self.recipient + "/api/artifacts", json=data)
