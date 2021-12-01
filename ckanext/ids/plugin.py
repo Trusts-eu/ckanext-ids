@@ -3,14 +3,12 @@ import ckan.plugins.toolkit as toolkit
 from ckan.lib.plugins import DefaultTranslation
 import ckanext.ids.blueprints as blueprints
 
-
 class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IOrganizationController, inherit=True)
     plugins.implements(plugins.ITranslation)
 
     # IConfigurer
-
     def update_config(self, config_):
         toolkit.add_template_directory(config_, 'templates')
         toolkit.add_public_directory(config_, 'public')
@@ -24,7 +22,9 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         schema.update({
             # This is an existing CKAN core configuration option, we are just
             # making it available to be editable at runtime
-            'ckan.search.show_all_types': [ignore_missing, is_boolean]
+            'ckan.search.show_all_types': [ignore_missing, is_boolean],
+            'ckanext.ids.connector_catalog_iri': [ignore_missing],
+
         })
 
         return schema
@@ -79,7 +79,6 @@ class IdsDummyJobPlugin(plugins.SingletonPlugin):
 
         return entity
 
-
 def assert_config():
     configuration_keys = {'ckanext.ids.trusts_central_node_ckan', 'ckanext.ids.central_node_connector_url', 'ckanext.ids.local_node_name', 'ckan.site_url'}
     for key in configuration_keys:
@@ -87,15 +86,16 @@ def assert_config():
             assert toolkit.config.get(key) is not None
         except AssertionError:
             raise EnvironmentError('Configuration property {0} was not set. Please fix your configuration.'.format(key))
-        try:
-            assert toolkit.config.get(key) is not ''
-        except AssertionError:
-            raise EnvironmentError('Configuration property {0} was set but was empty string. Please fix your configuration.'.format(key))
+#        try:
+#            assert toolkit.config.get(key) is not ''
+#        except AssertionError:
+#            raise EnvironmentError('Configuration property {0} was set but was empty string. Please fix your configuration.'.format(key))
 
 
 class IdsResourcesPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IBlueprint)
     assert_config()
+    blueprints.create_or_get_catalog_id()
 
     def get_blueprint(self):
         return [blueprints.ids]

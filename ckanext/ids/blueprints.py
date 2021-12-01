@@ -7,6 +7,10 @@ from ckan.common import _, config
 import ckan.lib.navl.dictization_functions as dict_fns
 import ckan.lib.helpers as h
 import ckan.lib.base as base
+import ckan.plugins as plugins
+import ckan.model as model
+from ckanext.ids.dataspaceconnector.connector import Connector
+from ckanext.ids.dataspaceconnector.offer import Offer
 import requests
 import logging
 
@@ -28,6 +32,7 @@ ids_actions = Blueprint(
 )
 
 log = logging.getLogger(__name__)
+
 
 def request_contains_mandatory_files():
     return request.files['Deployment file (docker-compose.xml) - mandatory-upload'].filename != ''
@@ -73,7 +78,7 @@ def create(id):
         toolkit.get_action('resource_create')(None, resource)
 
     revise_package_dict = {
-        "match" : {
+        "match": {
             "name": id
         },
         "update": {
@@ -89,17 +94,20 @@ def create(id):
     return toolkit.redirect_to('dataset.read',
                         id=id)
 
+
 @ids.route('/dataset/<id>/resources/delete', methods=['DELETE'])
 def delete(id):
     return "deleted"
 
+
 def push_package_task(dataset_dict):
-    action= 'package_create'
-    push_to_central(data=dataset_dict, action=action)
+    return push_to_dataspace_connector(dataset_dict)
+
 
 def push_organization_task(organization_dict):
     action= 'organization_create'
     push_to_central(data=organization_dict, action=action)
+
 
 def push_to_central(data, action):
     # We'll use the package_create function to create a new dataset.
@@ -109,6 +117,42 @@ def push_to_central(data, action):
     response = requests.post(url, json=data)
     #handle error
     assert response.status_code == 200
+
+
+def push_to_dataspace_connector(data):
+    c = plugins.toolkit.g
+    context = {'model': model, 'session': model.Session,
+               'user': c.user or c.author, 'auth_user_obj': c.userobj,
+               }
+
+    # this should point to the CKAN URL. The location should be accessible by the local connector container network
+    local_url = "http://192.168.80.1:5000" #FIXME config.get("ckan.site_url") for some reason it always returns the localhost address so hardocoded for now
+    local_resource_dataspace_connector = Connector().get_resource_api()
+    extras = []
+    #sync calls to the dataspace connector to create the appropriate objects
+    # this will be constant. It might cause an error if the connector does not persist it's data. A restart should fix the problem
+    catalog = config.get("ckanext.ids.connector_catalog_iri")
+    # try to populate this with fields from the package
+    offers = local_resource_dataspace_connector.create_offered_resource(Offer(data))
+    local_resource_dataspace_connector.add_resource_to_catalog(catalog, offers)
+    # FIXME put these in an object and create a nice method
+    extras.append({"key": "catalog", "value": catalog})
+    extras.append({"key": "offers", "value": offers})
+    for value in data["resources"]:
+        representation = local_resource_dataspace_connector.create_representation()
+        # this has also to run for every resource
+        download_url = local_url + "/" + data["type"] + "/" +\
+                       data["id"] + "/resource/" + value["id"] +\
+                       "/download/" + value["url"].split("download/", 1)[1]
+        artifact = local_resource_dataspace_connector.create_artifact(data={"accessUrl": download_url})
+        local_resource_dataspace_connector.add_representation_to_resource(offers, representation)
+        local_resource_dataspace_connector.add_artifact_to_representation(representation, artifact)
+        # add these on the resource meta
+        patch_data = {"id": value["id"], "representation": representation, "artifact": artifact}
+        logic.action.patch.resource_patch(context, data_dict=patch_data)
+
+    return toolkit.get_action("package_revise")(context, {"match__id": data["id"], "extras": extras})
+
 
 def transform_url(url):
     site_url = toolkit.config.get('ckan.site_url')
@@ -124,18 +168,21 @@ def transform_url(url):
 @ids_actions.route('/ids/actions/push_package/<id>', methods=['GET'])
 def push_package(id):
     package_meta = toolkit.get_action("package_show")(None, {"id":id})
-    for index, resource in enumerate(package_meta['resources']):
-        package_meta['resources'][index]['url_type'] = ''
-        package_meta['resources'][index]['url'] = transform_url(resource['url'])
-    response = toolkit.enqueue_job(push_package_task, [package_meta])
-    push_package_task(package_meta)
-    return json.dumps(response.id)
+    #for index, resource in enumerate(package_meta['resources']):
+    #    package_meta['resources'][index]['url_type'] = ''
+    #    package_meta['resources'][index]['url'] = transform_url(resource['url'])
+    # this is the asynchronous task
+    #response = toolkit.enqueue_job(push_package_task, [package_meta])
+    # this is the synchronous task
+    return push_package_task(package_meta)
+
+    #return json.dumps(response.id)
 
 ## TODO: Remove when AJAX script is in place
 @ids_actions.route('/ids/view/push_package/<id>', methods=['GET'])
 def push_package_view(id):
     response = push_package(id)
-    h.flash_success( _('Object pushed successfuly to Central node, jobId: ') + response)
+    h.flash_success( _('Object pushed to the DataspaceConnector Catalog.'))
     return toolkit.redirect_to('dataset.read', id=id)
 
 @ids_actions.route('/ids/actions/push_organization/<id>', methods=['GET'])
@@ -149,5 +196,37 @@ def push_organization(id):
 @ids_actions.route('/ids/view/push_organization/<id>', methods=['GET'])
 def push_organization_view(id):
     response = push_organization(id)
-    h.flash_success( _('Object pushed successfuly to Central node, jobId: ') + response)
+    h.flash_success( _('Object pushed successfully to Central node, jobId: ') + response)
     return toolkit.redirect_to('organization.read', id=id)
+
+@ids_actions.route('/ids/view/publish/<id>', methods=['GET'])
+def publish(id, offering_info=None, errors=None):
+    c = plugins.toolkit.g
+    context = {'model': model, 'session': model.Session,
+               'user': c.user or c.author, 'auth_user_obj': c.userobj,
+               }
+    dataset = toolkit.get_action('package_show')(context, {'id': id})
+    c.pkg_dict = dataset
+    c.offering = {}
+    c.errors = {}
+    #return ""
+    return toolkit.render('package/publish.html',
+                          extra_vars={
+                              u'pkg_dict': dataset
+                          })
+
+def create_or_get_catalog_id():
+    local_connector_resource_api = Connector().get_resource_api()
+    title = config.get("app_instance_uuid")
+    catalogs = local_connector_resource_api.get_catalogs()
+    found = False
+    for i, value in enumerate(catalogs["_embedded"]["catalogs"]):
+        if value["title"] == title:
+            found = True
+            catalog_iri = value["_links"]["self"]["href"]
+            continue
+
+    if not found:
+        catalog = {"title": title}
+        catalog_iri = local_connector_resource_api.create_catalog(catalog)
+    config.store.update({"ckanext.ids.connector_catalog_iri": catalog_iri})
