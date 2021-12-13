@@ -5,5 +5,9 @@ class Resource(dict):
     def __init__(self, resource_dict):
         if "representation" in resource_dict:
             self.representation_iri = resource_dict["representation"]
+        else:
+            self.representation_iri = None
         if "artifact" in resource_dict:
             self.artifact_iri = resource_dict["artifact"]
+        else:
+            self.artifact_iri = None

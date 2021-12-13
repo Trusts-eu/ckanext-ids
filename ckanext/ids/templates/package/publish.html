@@ -19,5 +19,5 @@
 
 
 {% block primary_content_inner %}
-    {% snippet "package/snippets/storepublisher_publish_form.html", data=g.pkg_dict, errors=g.errors, offering=g.offering %}
+    {% snippet "package/snippets/storepublisher_publish_form.html", data=g.pkg_dict, errors=g.errors, offering=g.offering, usage_control_policies=g.usage_policies %}
 {% endblock %}

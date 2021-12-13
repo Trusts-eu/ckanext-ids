@@ -1,0 +1,62 @@
+{% import 'macros/form.html' as form %}
+{% set date = data.get(field.field_name + '_date') %}
+{% set time = data.get(field.field_name + '_time') %}
+{% set tz = data.get(field.field_name + '_tz', h.get_display_timezone().zone) %}
+
+
+{% if not date is string and not time is string %}
+    {% set date = data.get(field.field_name) %}
+
+    {% if date %}
+        {% set tz = date.tzinfo.zone %}
+        {% set time = date.time() %}
+        {% set date = date.date() %}
+    {% endif %}
+{% endif %}
+<div class="row">
+{% call form.input(
+    field.field_name + '_date',
+    id='field-' + field.field_name +  '-date',
+    label= h.scheming_language_text(field.label),
+    type='date',
+    value=date,
+    error=errors[field.field_name + '_date'],
+    classes=['control-medium', "col-md-4"],
+    attrs=dict({"class": "form-control"}, **(field.get('form_attrs', {}))),
+    is_required=h.scheming_field_required(field)
+    )
+        %}
+    {%- snippet 'scheming/form_snippets/help_text.html', field=field -%}
+{% endcall %}
+
+{% call form.input(
+    field.field_name + '_time',
+    id='field-' + field.field_name + '-time',
+    label= h.scheming_language_text(field.get('label_time', 'Time')),
+    type='time',
+    value=time,
+    error=errors[field.field_name + '_time'],
+    classes=['control-medium', "col-md-4"],
+    attrs=dict({"class": "form-control"}, **(field.get('form_attrs', {}))),
+    is_required=h.scheming_field_required(field)
+    )
+        %}
+    {%- snippet 'scheming/form_snippets/help_text.html', field=field -%}
+{% endcall %}
+
+{% set tz_list = h.scheming_get_timezones(field) %}
+{% call form.select(
+    field.field_name + '_tz',
+    id='field-' + field.field_name + '-tz',
+    label=h.scheming_language_text(field.get('label_tz', 'Timezone')),
+    options=tz_list,
+    selected=tz,
+    error=errors[field.field_name + '_tz'],
+    classes=['control-medium', "col-md-4"],
+    attrs=dict({"class": "form-control"}, **(field.get('form_attrs', {}))),
+    is_required=h.scheming_field_required(field)
+    )
+        %}
+    {%- snippet 'scheming/form_snippets/help_text.html', field=field -%}
+{% endcall %}
+</div>

@@ -3,28 +3,24 @@
 {#{% resource 'baepublisher/image_upload.js' %}#}
 {% set private = data.get('private') %}
 
-{% set name = offering['name'] if offering else data.title %}
-{% set description = offering['description'] if offering else data.notes %}
-{% set categories = offering['categories'] %}
-{% set version =  offering['version'] if offering else '' %}
-{% set license_description = offering['license_description'] if offering else '' %}
+{% set name = offering.title if offering.title else data["title"] %}
+{% set start_datetime = offering.contract_start if offering.contract_start else '' %}
+{% set end_datetime = offering.contract_end if offering.contract_end else '' %}
+{% set offering_data = {
+    'contract_start' : start_datetime,
+    'contract_end' : end_datetime,
+    'title' : name
+            } %}
+
 {% set price = offering['price'] if offering else '' %}
 {% set is_open = offering['is_open'] if offering else True %}
 {% set update_acquire_url = offering['update_acquire_url'] if offering else True %}
 {% set catalogs = offering['catalogs'] %}
 {% set role = offering['role'] if offering else '' %}
 
-{% if offering['license_title'] %}
-    {% set license_title = offering['license_title'] %}
-{% elif data.get('license_id','') == 'notspecified' %}
-    {% set license_title = '' %}
-{% else %}
-    {% set license_title = data.get('license_title', '') %}
-{% endif %}
-
 {# This provides a full page that renders a form for publishing a dataset. It can
 then itself be extended to add/remove blocks of functionality. #}
-<form class="dataset-form form-horizontal" method="post" data-module="basic-form" action enctype="multipart/form-data">
+<form class="dataset-form row" method="post" data-module="basic-form" action enctype="multipart/form-data">
 
     {% block errors %}
         {% if errors %}
@@ -39,16 +35,89 @@ then itself be extended to add/remove blocks of functionality. #}
         {% endif %}
     {% endblock %}
 
-    <input type="hidden" name="pkg_id" value="{{ data.id }}" />
+    <input type="hidden" name="pkg_id" value="{{ data.id }}"/>
 
-    {% block offering_title %}
-        {{ form.input('name', id='field-name', label=_('Name'), placeholder=_('eg. The title of the offering'), value=name, error=errors['name'], classes=['control-full', 'control-large'], is_required=true) }}
+    <h2>Contract Basic Info</h2>
+    <div class="panel panel-default">
+        <div class="panel-body">
+            {% block offering_title %}
+                {{ form.input('title', id='title', label=_('Title'), placeholder=_('eg. The title of the offering'), value=name, error=errors['name'], classes=['control-full', 'control-large', 'col-md-12'], is_required=true) }}
+            {% endblock %}
+
+            {% block start_datetime %}
+                {%- set start_datetime_filed = {
+                                  'field_name' : 'contract_start',
+                                  'label' : 'Contract start',
+                                  'validators' : 'scheming_isodatetime_tz convert_to_json_if_datetime',
+                                  'required' : True
+                                  }
+                -%}
+                {%- snippet 'scheming/form_snippets/datetime_tz.html',
+                                          field=start_datetime_filed,
+                                          data=offering_data,
+                                          errors=errors,
+                                          licenses=licenses,
+                                          entity_type='dataset',
+                                          object_type='contract'
+                -%}
+            {% endblock %}
+
+            {% block end_datetime %}
+                {%- set end_datetime_fieled = {
+                  'field_name' : 'contract_end',
+                  'label': 'Contract end',
+                  'validators' : 'scheming_isodatetime_tz convert_to_json_if_datetime',
+                  'required': True
+                  }
+                -%}
+                {%- snippet 'scheming/form_snippets/datetime_tz.html',
+                          field=end_datetime_fieled,
+                          data=offering_data,
+                          errors=errors,
+                          licenses=licenses,
+                          entity_type='dataset',
+                          object_type='contract'
+                -%}
+            {% endblock %}
+        </div>
+    </div>
+
+
+    <h2>Choose usage policies: </h2>
+    {% block usage_control %}
+        <div>
+            {% for policy in usage_control_policies.policy_templates %}
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        {%- set attributes = {"onchange":"enableUsagePolicyOptions(this)"} -%}
+                        {{ form.checkbox(policy.type, checked=false, attrs=attributes) }}
+                    </div>
+                    {%- if  policy['fields']|length != 0 -%}
+                        <div class="panel-body">
+                            {% for field in policy.fields %}
+                                {%- snippet 'scheming/form_snippets/' + field.form_snippet,
+                                                            field=field,
+                                                            data=offering_data,
+                                                            errors=errors,
+                                                            entity_type='dataset',
+                                                            object_type='contract'
+                                -%}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
     {% endblock %}
+
+    {#
 
     {% block offering_description %}
-        {{ form.textarea('description', id='field-description', label=_('Description'), placeholder=_('eg. Offering description'), value=description, error=errors.notes) }}
+        {{ form.textarea('description', id='field-description', classes=['col-md-12'], label=_('Description'), placeholder=_('eg. Offering description'), value=description, error=errors.notes) }}
     {% endblock %}
-{#
+#}
+
+    {#
 
     {% block offering_tags %}
         {% set category_attrs = {'data-module': 'autocomplete', 'data-module-tags': '',
@@ -136,7 +205,19 @@ then itself be extended to add/remove blocks of functionality. #}
 
     {% block form_actions %}
         <div class="form-actions">
-            <button class="btn btn-primary" type="submit" name="save">{% block save_button_text %}{{ _('Publish Offering') }}{% endblock %}</button>
+            <button class="btn btn-primary" type="submit" name="save">
+                {% block save_button_text %}{{ _('Publish Offering') }}{% endblock %}</button>
         </div>
     {% endblock %}
 </form>
+<script>
+    function enableUsagePolicyOptions(checkboxElem) {
+        if (checkboxElem.checked) {
+            $("#"+checkboxElem.id).parents().eq(4).children().eq(1).find("input").removeAttr("disabled")
+            $("#"+checkboxElem.id).parents().eq(4).children().eq(1).find("select").removeAttr("disabled")
+        } else {
+            $("#"+checkboxElem.id).parents().eq(4).children().eq(1).find("input").attr("disabled", true)
+            $("#"+checkboxElem.id).parents().eq(4).children().eq(1).find("select").attr("disabled", true)
+        }
+    }
+</script>

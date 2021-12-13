@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "policy_templates" : [
+    {
+      "label" : "",
+      "type": "PROVIDE_ACCESS",
+      "fields" : []
+    },
+    {
+      "label" : "",
+      "type": "PROHIBIT_ACCESS",
+      "fields" : []
+    },
+    {
+      "label" : "",
+      "type": "N_TIMES_USAGE",
+      "fields" : [
+        {
+          "field_name" : "value",
+          "label" : "Value",
+          "validators": "is_positive_integer",
+          "form_snippet": "number.html",
+          "form_attrs": {
+            "type": "number",
+            "min" : 0
+          }
+        }
+      ]
+    },
+    {
+      "label" : "",
+      "type": "USAGE_DURING_INTERVAL",
+      "fields" : [
+        {
+          "field_name" : "start",
+          "label" : "Start",
+          "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
+          "form_snippet": "datetime_tz.html",
+          "display_snippet": "datetime_tz.html"
+        },
+        {
+          "field_name" : "end",
+          "label" : "End",
+          "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
+          "form_snippet": "datetime_tz.html",
+          "display_snippet": "datetime_tz.html"
+        }
+      ]
+    },
+    {
+      "label" : "",
+      "type": "DURATION_USAGE",
+      "fields" : [],
+      "duration": "PT1M30.5S"
+    },
+    {
+      "label" : "",
+      "type": "USAGE_UNTIL_DELETION",
+      "fields" : [],
+      "start": "2020-07-11T00:00:00Z",
+      "end": "2020-07-11T00:00:00Z",
+      "date": "2020-07-11T00:00:00Z"
+    },
+    {
+      "label" : "",
+      "type": "USAGE_LOGGING",
+      "fields" : []
+    },
+    {
+      "label" : "",
+      "type": "USAGE_NOTIFICATION",
+      "fields" : [],
+      "url": "https://localhost:8080/api/ids/data"
+    },
+    {
+      "label" : "",
+      "type": "CONNECTOR_RESTRICTED_USAGE",
+      "fields" : [],
+      "url": "https://localhost:8080"
+    },
+    {
+      "label" : "",
+      "type": "SECURITY_PROFILE_RESTRICTED_USAGE",
+      "fields" : [],
+      "profile": "BASE_SECURITY_PROFILE"
+    }
+  ]
+}

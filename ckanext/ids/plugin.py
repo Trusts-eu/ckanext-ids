@@ -1,7 +1,12 @@
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
+from ckan.common import config
 from ckan.lib.plugins import DefaultTranslation
 import ckanext.ids.blueprints as blueprints
+import json
+import os
+import inspect
+
 
 class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.IConfigurer)
@@ -24,6 +29,7 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
             # making it available to be editable at runtime
             'ckan.search.show_all_types': [ignore_missing, is_boolean],
             'ckanext.ids.connector_catalog_iri': [ignore_missing],
+            'ckanext.ids.usage_control_policies': [ignore_missing]
 
         })
 
@@ -55,7 +61,12 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 
     def get_blueprint(self):
         return [blueprints.ids_actions]
-        #return entity
+
+    plugins.implements(plugins.IPackageController, inherit=True)
+
+    def after_delete(self, context, pkg_dict):
+        package_meta = toolkit.get_action("package_show")(None, {"id": pkg_dict["id"]})
+        blueprints.delete_from_dataspace_connector(package_meta)
 
 # The following code is an example of how we can implement a plugin that performs an action on a specific event.
 # The event is a package read event, show it will be activated whenever a package is read ie. opening the URL of a
@@ -69,7 +80,6 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 # Then on your terminal you will see the messages produced by the job.
 
 
-
 class IdsDummyJobPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IPackageController, inherit=True)
 
@@ -79,8 +89,14 @@ class IdsDummyJobPlugin(plugins.SingletonPlugin):
 
         return entity
 
+
 def assert_config():
-    configuration_keys = {'ckanext.ids.trusts_central_node_ckan', 'ckanext.ids.central_node_connector_url', 'ckanext.ids.local_node_name', 'ckan.site_url'}
+    configuration_keys = {
+        'ckanext.ids.trusts_central_node_ckan',
+        'ckanext.ids.central_node_connector_url',
+        'ckanext.ids.local_node_name',
+        'ckan.site_url'
+    }
     for key in configuration_keys:
         try:
             assert toolkit.config.get(key) is not None
@@ -92,10 +108,37 @@ def assert_config():
 #            raise EnvironmentError('Configuration property {0} was set but was empty string. Please fix your configuration.'.format(key))
 
 
+# used to load the policy templates from a local json file. A default is already provided.
+# For now the name and position of the file is hardcoded
+def load_usage_control_policies():
+
+    url = "ckanext.ids:usage_control.json"
+    module, file_name = url.split(':', 1)
+    try:
+        m = __import__(module, fromlist=[''])
+    except ImportError:
+        return
+
+    p = os.path.join(os.path.dirname(inspect.getfile(m)), file_name)
+    if os.path.exists(p):
+        with open(p) as schema_file:
+            return json.load(schema_file)
+
+
 class IdsResourcesPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IBlueprint)
     assert_config()
     blueprints.create_or_get_catalog_id()
+    usage_control_policies = load_usage_control_policies()
+    # fixing the names in the policy templates and adding some default options
+    for policy in usage_control_policies["policy_templates"]:
+        for field in policy["fields"]:
+            field["field_name"] = policy["type"] + "_" + field["field_name"]
+            try:
+                field["form_attrs"]["disabled"] = ""
+            except KeyError:
+                field["form_attrs"] = {"disabled": ""}
+    config.store.update({"ckanext.ids.usage_control_policies": usage_control_policies})
 
     def get_blueprint(self):
         return [blueprints.ids]

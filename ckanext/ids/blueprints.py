@@ -12,6 +12,7 @@ import ckan.model as model
 from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.dataspaceconnector.offer import Offer
 from ckanext.ids.dataspaceconnector.resource import Resource
+from ckanext.ids.dataspaceconnector.contract import Contract
 import requests
 import logging
 
@@ -164,6 +165,25 @@ def push_to_dataspace_connector(data):
     updated_package = toolkit.get_action("package_patch")(context, {"id": data["id"], "extras": extras})
     return updated_package
 
+def delete_from_dataspace_connector(data):
+    c = plugins.toolkit.g
+    context = {'model': model, 'session': model.Session,
+               'user': c.user or c.author, 'auth_user_obj': c.userobj,
+               }
+    local_resource_dataspace_connector = Connector().get_resource_api()
+    catalog = config.get("ckanext.ids.connector_catalog_iri")
+    offer = Offer(data)
+    for value in data["resources"]:
+        # this has also to run for every resource
+        resource = Resource(value)
+        if resource.representation_iri is not None:
+            local_resource_dataspace_connector.delete_representation(resource)
+        if resource.artifact_iri is not None:
+            local_resource_dataspace_connector.delete_artifact(resource.artifact_iri, data={})
+    if offer.offer_iri is not None:
+            local_resource_dataspace_connector.delete_offered_resource(offer)
+    return
+
 
 def transform_url(url):
     site_url = toolkit.config.get('ckan.site_url')
@@ -179,7 +199,7 @@ def transform_url(url):
 
 @ids_actions.route('/ids/actions/push_package/<id>', methods=['GET'])
 def push_package(id):
-    package_meta = toolkit.get_action("package_show")(None, {"id":id})
+    package_meta = toolkit.get_action("package_show")(None, {"id": id})
     # for index, resource in enumerate(package_meta['resources']):
     #    package_meta['resources'][index]['url_type'] = ''
     #    package_meta['resources'][index]['url'] = transform_url(resource['url'])
@@ -213,8 +233,45 @@ def push_organization_view(id):
     h.flash_success( _('Object pushed successfully to Central node, jobId: ') + response)
     return toolkit.redirect_to('organization.read', id=id)
 
+@ids_actions.route('/ids/actions/publish/<id>', methods=['POST'])
+def publish_action(id):
+    local_connector_resource_api = Connector().get_resource_api()
+    c = plugins.toolkit.g
+    context = {'model': model, 'session': model.Session,
+               'user': c.user or c.author, 'auth_user_obj': c.userobj,
+               }
+    dataset = toolkit.get_action('package_show')(context, {'id': id})
+    c.pkg_dict = dataset
+    contract_meta = request.data
+    # create the contract
+    contract_id = local_connector_resource_api.create_contract(
+        {
+            "start": contract_meta.contract_start.isoformat(),
+            "end": contract_meta.contract_end.isoformat(),
+            "title": contract_meta.title
+        }
+    )
+    # create the rules
+    rules = []
+    for policy in contract_meta.policies:
+        rule = local_connector_resource_api.get_new_policy(policy)
+        rule_id = local_connector_resource_api.create_rule({"value": rule})
+        rules.append(rule_id)
+    # add rules to contract
+    local_connector_resource_api.add_rule_to_contract(contract=contract_id, rule=rules)
+    resource_id = next((sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)["value"]
+    local_connector_resource_api.add_contract_to_resource(resource=resource_id, contract=contract_id)
+    extras = dataset["extras"]
+    extras.append({"key": "contract", "value": contract_id})
+    extras.append({"key": "contract_meta", "value": contract_meta.toJSON()})
 
-@ids_actions.route('/ids/view/publish/<id>', methods=['GET'])
+    updated_package = toolkit.get_action("package_patch")(context, {"id": id, "extras": extras})
+
+
+
+
+
+@ids_actions.route('/ids/view/publish/<id>', methods=['GET', 'POST'])
 def publish(id, offering_info=None, errors=None):
     c = plugins.toolkit.g
     context = {'model': model, 'session': model.Session,
@@ -222,8 +279,20 @@ def publish(id, offering_info=None, errors=None):
                }
     dataset = toolkit.get_action('package_show')(context, {'id': id})
     c.pkg_dict = dataset
+    c.usage_policies = config.get("ckanext.ids.usage_control_policies")
     c.offering = {}
     c.errors = {}
+    if request.method == "POST":
+        try:
+            contract = Contract(request.form)
+            c.offering = contract
+            c.errors = contract.errors
+            if len(contract.errors) == 0:
+                request.data = contract
+                publish_action(id)
+        except KeyError as e:
+            print("there was an error")
+
     return toolkit.render('package/publish.html',
                           extra_vars={
                               u'pkg_dict': dataset
