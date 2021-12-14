@@ -48,7 +48,7 @@ To install ckanext-ids:
     pip install -e .
 	pip install -r requirements.txt
 
-3. Add `ids` to the `ckan.plugins` setting in your CKAN
+3. Add `ids` and `ids_dummy to the `ckan.plugins` setting in your CKAN
    config file (by default the config file is located at
    `/etc/ckan/default/ckan.ini`).
 
@@ -59,17 +59,12 @@ To install ckanext-ids:
 
 ## Config settings
 
-
-	# The URL of the central node where packages and organizations will be pushed
-	# (required).
-	ckanext.ids.trusts_central_node_ckan = http://localhost:8282/central-core/ckan/5000/api/3/action/
-    # The name of the local node 
-    # (required)
-    ckanext.ids.local_node_name = provider-core
-    # The url of the central trusted connector
-    # (required)
-    ckanext.ids.central_node_connector_url = http://34.77.70.203:8282/
-
+    # The URL of the local dataspace connector
+    ckanext.ids.trusts_local_dataspace_connector_url = http://localhost:8089
+    # The username of the local dataspace connector
+    ckanext.ids.trusts_local_dataspace_connector_username = admin
+    # The password of the local dataspace connector
+    ckanext.ids.trusts_local_dataspace_connector_password = password
 
 
 ## Developer installation

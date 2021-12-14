@@ -92,9 +92,9 @@ class IdsDummyJobPlugin(plugins.SingletonPlugin):
 
 def assert_config():
     configuration_keys = {
-        'ckanext.ids.trusts_central_node_ckan',
-        'ckanext.ids.central_node_connector_url',
-        'ckanext.ids.local_node_name',
+        'ckanext.ids.trusts_local_dataspace_connector_url',
+        'ckanext.ids.trusts_local_dataspace_connector_username',
+        'ckanext.ids.trusts_local_dataspace_connector_password',
         'ckan.site_url'
     }
     for key in configuration_keys:
