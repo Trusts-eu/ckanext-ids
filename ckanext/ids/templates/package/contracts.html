@@ -1,0 +1,23 @@
+{% extends "package/edit_base.html" %}
+
+{% block title %}Available contracts {{ dataset_type }} - {{ super() }}{% endblock %}
+
+{% block secondary_content %}
+
+    {{ super() }}
+
+    <section class="module module-narrow module-shallow">
+        <h2 class="module-heading"><i class="icon-info-sign fa fa-info-circle"></i>{% trans %}This is a list of the available contracts for this resource.{% endtrans %}</h2>
+        <div class="module-content">
+            <p>
+                Manage contracts of this resource
+            </p>
+        </div>
+    </section>
+
+{% endblock %}
+
+
+{% block primary_content_inner %}
+    {% snippet "package/snippets/contracts_list.html", data=g.pkg_dict, contracts=g.contracts %}
+{% endblock %}

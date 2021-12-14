@@ -1,46 +1,46 @@
 {
   "version": 1,
-  "policy_templates" : [
+  "policy_templates": [
     {
-      "label" : "",
+      "label": "",
       "type": "PROVIDE_ACCESS",
-      "fields" : []
+      "fields": []
     },
     {
-      "label" : "",
+      "label": "",
       "type": "PROHIBIT_ACCESS",
-      "fields" : []
+      "fields": []
     },
     {
-      "label" : "",
+      "label": "",
       "type": "N_TIMES_USAGE",
-      "fields" : [
+      "fields": [
         {
-          "field_name" : "value",
-          "label" : "Value",
+          "field_name": "value",
+          "label": "Value",
           "validators": "is_positive_integer",
           "form_snippet": "number.html",
           "form_attrs": {
             "type": "number",
-            "min" : 0
+            "min": 0
           }
         }
       ]
     },
     {
-      "label" : "",
+      "label": "",
       "type": "USAGE_DURING_INTERVAL",
-      "fields" : [
+      "fields": [
         {
-          "field_name" : "start",
-          "label" : "Start",
+          "field_name": "start",
+          "label": "Start",
           "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
           "form_snippet": "datetime_tz.html",
           "display_snippet": "datetime_tz.html"
         },
         {
-          "field_name" : "end",
-          "label" : "End",
+          "field_name": "end",
+          "label": "End",
           "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
           "form_snippet": "datetime_tz.html",
           "display_snippet": "datetime_tz.html"
@@ -48,41 +48,92 @@
       ]
     },
     {
-      "label" : "",
+      "label": "",
       "type": "DURATION_USAGE",
-      "fields" : [],
-      "duration": "PT1M30.5S"
+      "fields": [
+        {
+          "field_name": "duration",
+          "label": "duration",
+          "validators": "is_positive_integer",
+          "form_snippet": "duration.html",
+          "form_attrs": {
+          }
+        }
+      ]
     },
     {
-      "label" : "",
+      "label": "",
       "type": "USAGE_UNTIL_DELETION",
-      "fields" : [],
-      "start": "2020-07-11T00:00:00Z",
-      "end": "2020-07-11T00:00:00Z",
-      "date": "2020-07-11T00:00:00Z"
+      "fields": [
+        {
+          "field_name": "start",
+          "label": "Start",
+          "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
+          "form_snippet": "datetime_tz.html",
+          "display_snippet": "datetime_tz.html"
+        },
+        {
+          "field_name": "end",
+          "label": "End",
+          "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
+          "form_snippet": "datetime_tz.html",
+          "display_snippet": "datetime_tz.html"
+        },
+        {
+          "field_name": "date",
+          "label": "End",
+          "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
+          "form_snippet": "datetime_tz.html",
+          "display_snippet": "datetime_tz.html"
+        }
+      ]
     },
     {
-      "label" : "",
+      "label": "",
       "type": "USAGE_LOGGING",
-      "fields" : []
+      "fields": []
     },
     {
-      "label" : "",
+      "label": "",
       "type": "USAGE_NOTIFICATION",
-      "fields" : [],
-      "url": "https://localhost:8080/api/ids/data"
+      "fields": [
+        {
+          "field_name": "url",
+          "label": "URL",
+          "validators": "",
+          "form_snippet": "text.html",
+          "form_attrs": {
+          }
+        }
+      ]
     },
     {
-      "label" : "",
+      "label": "",
       "type": "CONNECTOR_RESTRICTED_USAGE",
-      "fields" : [],
-      "url": "https://localhost:8080"
+      "fields": [
+        {
+          "field_name": "url",
+          "label": "URL",
+          "validators": "",
+          "form_snippet": "text.html",
+          "form_attrs": {
+          }
+        }
+      ]
     },
     {
-      "label" : "",
+      "label": "",
       "type": "SECURITY_PROFILE_RESTRICTED_USAGE",
-      "fields" : [],
-      "profile": "BASE_SECURITY_PROFILE"
+      "fields": [
+        {
+          "field_name": "profile",
+          "label": "Profile",
+          "validators": "",
+          "form_snippet": "text.html",
+          "form_attrs": {
+          }
+        }
+      ]
     }
   ]
 }

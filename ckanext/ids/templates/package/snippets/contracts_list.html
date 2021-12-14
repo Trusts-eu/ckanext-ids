@@ -1,0 +1,35 @@
+{#
+Renders a list of resources with icons and view links.
+
+resources - A list of resources (dicts) to render
+data - A package dict that the resources belong to.
+is_activity_archive - Whether this is an old version of the dataset (and therefore read-only)
+
+Example:
+
+  {% snippet "package/snippets/resources_list.html", data=data, resources=data.resources %}
+
+#}
+<section id="dataset-contracts" class="contracts">
+    <h2>{{ _('Contracts') }}</h2>
+    {% block contract_list %}
+        {% if contracts %}
+            <ul class="{% block contract_list_class %}resource-list{% endblock %}">
+                {% block contract_list_inner %}
+                    {% set can_edit = h.check_access('package_update', {'id':data.id }) and not is_activity_archive %}
+                    {% for contract in contracts %}
+                        {% snippet 'package/snippets/contract_item.html', pkg=data, contract=contract, can_edit=can_edit, is_activity_archive=is_activity_archive %}
+                    {% endfor %}
+                {% endblock %}
+            </ul>
+        {% else %}
+            {% if h.check_access('resource_create', {'package_id': data['id']}) and not is_activity_archive %}
+                {% trans url=h.url_for(data.type ~ '_resource.new', id=data.name) %}
+                    <p class="empty">This item has no contracts, <a href="{{ url }}">why not create some?</a></p>
+                {% endtrans %}
+            {% else %}
+                <p class="empty">{{ _('This item has no contracts.') }}</p>
+            {% endif %}
+        {% endif %}
+    {% endblock %}
+</section>

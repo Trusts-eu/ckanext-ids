@@ -298,6 +298,21 @@ def publish(id, offering_info=None, errors=None):
                               u'pkg_dict': dataset
                           })
 
+@ids_actions.route('/ids/view/contracts/<id>', methods=['GET'])
+def contracts(id, offering_info=None, errors=None):
+    c = plugins.toolkit.g
+    context = {'model': model, 'session': model.Session,
+               'user': c.user or c.author, 'auth_user_obj': c.userobj,
+               }
+    dataset = toolkit.get_action('package_show')(context, {'id': id})
+    c.pkg_dict = dataset
+    contract = json.loads(next((sub for sub in dataset["extras"] if sub['key'] == 'contract_meta'), None)["value"])
+
+    c.contracts = [contract]
+    return toolkit.render('package/contracts.html',
+                          extra_vars={
+                              u'pkg_dict': dataset
+                          })
 
 def create_or_get_catalog_id():
     local_connector_resource_api = Connector().get_resource_api()
