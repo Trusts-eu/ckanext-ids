@@ -41,6 +41,8 @@ class ResourceApi:
 
     def get_catalogs(self, data={}):
         response = self.session.get(self.recipient + "/api/catalogs")
+        print("GETting catalogues returned:",response.status_code,
+              "url:",self.recipient+"/api/catalogs")
         return json.loads(response.text)
 
     def create_offered_resource(self, data={}):

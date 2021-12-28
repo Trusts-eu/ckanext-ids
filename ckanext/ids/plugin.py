@@ -1,14 +1,20 @@
+import inspect
+import json
+import logging
+import os
+
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 from ckan.common import config
 from ckan.lib.plugins import DefaultTranslation
+
 import ckanext.ids.blueprints as blueprints
-import json
-import os
-import inspect
+
+log = logging.getLogger("ckanext")
 
 
 class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
+    log.debug("\n................ Plugin Init................\n+")
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IOrganizationController, inherit=True)
     plugins.implements(plugins.ITranslation)
@@ -18,7 +24,7 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         toolkit.add_template_directory(config_, 'templates')
         toolkit.add_public_directory(config_, 'public')
         toolkit.add_resource('assets',
-            'ckanext-ids')
+                             'ckanext-ids')
 
     def update_config_schema(self, schema):
         ignore_missing = toolkit.get_validator('ignore_missing')
@@ -35,7 +41,25 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 
         return schema
 
+    # def after_search(self, search_results, search_params):
+    #     log.debug("\n................ After Search ................\n+")
+    #     import json
+    #     log.debug("\n\nParams------------------------------------------>")
+    #     log.debug(json.dumps(search_params, indent=2))
+    #     log.debug("\n\nResults----------------------------------------->")
+    #     log.debug(json.dumps(search_results, indent=2))
+    #
+    #     start = search_params.get("start", 0)
+    #     search_query = search_params.get("q", None)
+    #     fq = tuple(search_params.get("fq", None))
+    #     results_from_broker = broker_package_search(q=search_query,
+    #                                                 fq=fq,
+    #                                                 start_offset=start)
+    #
+    #     return search_results
+
     def before_view(self, pkg_dict):
+        logging.error("\n................ Before View ................\n+")
         data_application = {
             'fq': '+type:application +organization:' + pkg_dict['name'],
             'include_private': True
@@ -65,8 +89,10 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.IPackageController, inherit=True)
 
     def after_delete(self, context, pkg_dict):
-        package_meta = toolkit.get_action("package_show")(None, {"id": pkg_dict["id"]})
+        package_meta = toolkit.get_action("package_show")(None, {
+            "id": pkg_dict["id"]})
         blueprints.delete_from_dataspace_connector(package_meta)
+
 
 # The following code is an example of how we can implement a plugin that performs an action on a specific event.
 # The event is a package read event, show it will be activated whenever a package is read ie. opening the URL of a
@@ -101,7 +127,12 @@ def assert_config():
         try:
             assert toolkit.config.get(key) is not None
         except AssertionError:
-            raise EnvironmentError('Configuration property {0} was not set. Please fix your configuration.'.format(key))
+            raise EnvironmentError(
+                'Configuration property {0} was not set. '
+                'Please fix your configuration.'.format(
+                    key))
+
+
 #        try:
 #            assert toolkit.config.get(key) is not ''
 #        except AssertionError:
@@ -111,7 +142,6 @@ def assert_config():
 # used to load the policy templates from a local json file. A default is already provided.
 # For now the name and position of the file is hardcoded
 def load_usage_control_policies():
-
     url = "ckanext.ids:usage_control.json"
     module, file_name = url.split(':', 1)
     try:
@@ -138,7 +168,8 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
                 field["form_attrs"]["disabled"] = ""
             except KeyError:
                 field["form_attrs"] = {"disabled": ""}
-    config.store.update({"ckanext.ids.usage_control_policies": usage_control_policies})
+    config.store.update(
+        {"ckanext.ids.usage_control_policies": usage_control_policies})
 
     def get_blueprint(self):
         return [blueprints.ids]
