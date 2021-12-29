@@ -133,12 +133,19 @@ def push_to_dataspace_connector(data):
     catalog = config.get("ckanext.ids.connector_catalog_iri")
     # try to populate this with fields from the package
     offer = Offer(data)
-    if offer.offer_iri is None:
-        offers = local_resource_dataspace_connector.create_offered_resource(Offer(data))
-        local_resource_dataspace_connector.add_resource_to_catalog(catalog, offers)
+    if offer.offer_iri is not None:
+        if local_resource_dataspace_connector.update_offered_resource(offer.offer_iri, offer.to_dictionary()):
+            offers = offer.offer_iri
+        else:
+            # The offer does not exist on the dataspace connector. This might mean that the offer was manually deleted or
+            # lost after some restart. The package dictionary contains the iri of the deleted offer so it fails. For now,
+            # manually editing the package and the resources is needed, or even deleting the package and create from scratch.
+            # We should implement a method to do this through the admin/manage menu
+            log.error("Offer not found on the Dataspace Connector.")
+            return False
     else:
-        local_resource_dataspace_connector.update_offered_resource(offer)
-        offers = offer.offer_iri
+        offers = local_resource_dataspace_connector.create_offered_resource(offer.to_dictionary())
+        local_resource_dataspace_connector.add_resource_to_catalog(catalog, offers)
     # FIXME put these in an object and create a nice method
     extras = [{"key": "catalog", "value": catalog}, {"key": "offers", "value": offers}]
     for value in data["resources"]:
@@ -162,8 +169,8 @@ def push_to_dataspace_connector(data):
         patch_data = {"id": value["id"], "representation": representation, "artifact": artifact}
         logic.action.patch.resource_patch(context, data_dict=patch_data)
 
-    updated_package = toolkit.get_action("package_patch")(context, {"id": data["id"], "extras": extras})
-    return updated_package
+    toolkit.get_action("package_patch")(context, {"id": data["id"], "extras": extras})
+    return True
 
 def delete_from_dataspace_connector(data):
     c = plugins.toolkit.g
@@ -214,7 +221,11 @@ def push_package(id):
 @ids_actions.route('/ids/view/push_package/<id>', methods=['GET'])
 def push_package_view(id):
     response = push_package(id)
-    h.flash_success( _('Object pushed to the DataspaceConnector Catalog.'))
+    if response:
+        h.flash_success(_('Object pushed to the DataspaceConnector Catalog.'))
+    else:
+        h.flash_error(_('Offer not found on the Dataspace Connector. Perhaps it was deleted manually on'
+                           ' the Dataspace Connector. Contact your adinistrator'))
     return toolkit.redirect_to('dataset.read', id=id)
 
 

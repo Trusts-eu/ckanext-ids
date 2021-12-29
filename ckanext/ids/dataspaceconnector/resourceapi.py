@@ -41,20 +41,20 @@ class ResourceApi:
 
     def get_catalogs(self, data={}):
         response = self.session.get(self.recipient + "/api/catalogs")
-        print("GETting catalogues returned:",response.status_code,
-              "url:",self.recipient+"/api/catalogs")
+        print("GETting catalogues returned:", response.status_code,
+              "url:", self.recipient+"/api/catalogs")
         return json.loads(response.text)
 
     def create_offered_resource(self, data={}):
         response = self.session.post(self.recipient + "/api/offers", json=data)
         return response.headers["Location"]
 
-    def update_offered_resource(self, data={}):
-        response = self.session.put(data.offer_iri, json=data)
+    def update_offered_resource(self, offered_resource, data={}):
+        response = self.session.put(offered_resource, json=data)
         return response.status_code == 204
 
-    def delete_offered_resource(self, data={}):
-        response = self.session.delete(data.offer_iri, json=data)
+    def delete_offered_resource(self, offered_resource, data={}):
+        response = self.session.delete(offered_resource, json=data)
         return response.status_code == 204
 
     def create_representation(self, data={}):
@@ -62,11 +62,11 @@ class ResourceApi:
         return response.headers["Location"]
 
     def update_representation(self, data={}):
-        response = self.session.put(data.representation_iri, json=data)
+        response = self.session.put(data["representation_iri"], json=data)
         return response.status_code == 204
 
     def delete_representation(self, data={}):
-        response = self.session.delete(data.representation_iri, json=data)
+        response = self.session.delete(data["representation_iri"], json=data)
         return response.status_code == 204
 
     def create_artifact(self, data={"value": "SOME LONG VALUE"}):

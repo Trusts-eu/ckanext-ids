@@ -19,25 +19,18 @@ The Offer Model of the Dataspace Connector
 """
 
 
-class Offer(dict):
-    title: None
-    description: None
-    keywords: []
-    publisher: None
-    language: None
-    license: None
-    sovereign: None
-    endpointDocumentation: None
-    samples: []
-    paymentMethod: None
-    catalog_iri: ""
-    offer_iri: ""
+class Offer:
 
     def __init__(self, pkg_dict):
         self.title = pkg_dict['title']
         self.keywords = pkg_dict['tags']
         self.publisher = pkg_dict['owner_org']
         self.license = pkg_dict['license_url']
+        additional = {
+            "ids:contentType": "https://www.trusts-data.eu/ontology/" + str(pkg_dict['type']).capitalize(),
+            "ids:theme": pkg_dict['theme']
+        }
+        self.additional = additional
         if "extras" in pkg_dict:
             for entry in pkg_dict["extras"]:
                 if entry["key"] == "catalog":
@@ -47,6 +40,19 @@ class Offer(dict):
         else:
             self.catalog_iri = None
             self.offer_iri = None
+
+    def to_dictionary(self):
+        return {
+            'title': self.title,
+            'keywords': self.keywords,
+            'publisher': self.publisher,
+            'license': self.license,
+            'ids:contentType': self.additional["ids:contentType"],
+            'ids:theme': self.additional["ids:theme"],
+        #    'catalog_iri': self.catalog_iri,
+        #    'offer_iri': self.offer_iri
+        }
+
 
 """
 {

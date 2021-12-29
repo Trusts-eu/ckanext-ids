@@ -59,7 +59,7 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     #     return search_results
 
     def before_view(self, pkg_dict):
-        logging.error("\n................ Before View ................\n+")
+        log.debug("\n................ Before View ................\n+")
         data_application = {
             'fq': '+type:application +organization:' + pkg_dict['name'],
             'include_private': True
