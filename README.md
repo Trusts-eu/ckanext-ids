@@ -103,7 +103,7 @@ If ckanext-ids should be available on PyPI you can follow these steps to publish
 
 4. Upload the source distribution to PyPI:
 
-       twine upload dist/*
+        twine upload --repository gitlab-trusts dist/*
 
 5. Commit any outstanding changes:
 
@@ -116,6 +116,21 @@ If ckanext-ids should be available on PyPI you can follow these steps to publish
 
        git tag 0.0.1
        git push --tags
+
+
+## Important
+In order for the twine upload to work you have to modify your ```.pypirc``` file as following:
+
+        [distutils]
+        index-servers =
+            gitlab-trusts
+        
+        [gitlab-trusts]
+        repository = https://gitlab.com/api/v4/projects/25938659/packages/pypi
+        username = token-name
+        password = token-value
+    
+If your are using a different package registry, or a different gitlab repo, please modify accordingly. 
 
 ## License
 
