@@ -28,14 +28,15 @@ class Offer:
         self.license = pkg_dict['license_url']
         additional = {
             "https://www.trusts-data.eu/ontology/asset_type":
-                "https://www.trusts-data.eu/ontology/" + str(pkg_dict['type']).capitalize(),
+                "https://www.trusts-data.eu/ontology/" + str(pkg_dict[
+                                                          'type']).capitalize(),
             "https://www.trusts-data.eu/ontology/theme": pkg_dict['theme']
         }
         # FixMe there seems to be an issue with how the DSC handles these
         # properties. Has been reported already, waiting for solution
         # https://github.com/International-Data-Spaces-Association/DataspaceConnector/issues/892
         self.additional = additional
-        self.additional = {"ids:version": "3"}
+
         if "extras" in pkg_dict:
             for entry in pkg_dict["extras"]:
                 if entry["key"] == "catalog":
@@ -55,10 +56,15 @@ class Offer:
         #    'catalog_iri': self.catalog_iri,
         #    'offer_iri': self.offer_iri
         }
-        if "ids:contentType" in self.additional.keys():
-            d['contentType'] = self.additional["ids:contentType"]
-        if "ids:theme" in self.additional.keys():
-            d['theme'] = self.additional["ids:theme"]
+        for k,v in self.additional.items():
+            if k.startswith("ids:"):
+                d[k.split(":")[-1]] = v
+            else:
+                d[k] = v
+        #if "ids:contentType" in self.additional.keys():
+        #    d['contentType'] = self.additional["ids:contentType"]
+        #if "ids:theme" in self.additional.keys():
+        #    d['theme'] = self.additional["ids:theme"]
 
         return d
 

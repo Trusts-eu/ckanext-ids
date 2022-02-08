@@ -90,11 +90,11 @@ class Connector:
                                  data=data,
                                  auth=HTTPBasicAuth(self.auth[0],
                                                     self.auth[1]))
+        if return_if_417:
+            return response
         if response.status_code > 299 or response.text is None:
             log.error("Got code " + str(response.status_code) + " in search")
             log.error("Provided Data: " + data.decode("utf-8"))
-            if return_if_417 and response.status_code == 417:
-                return response
             raise ConnectorException("Code: " + str(response.status_code) +
                                      " Text: " + str(response.text))
 
