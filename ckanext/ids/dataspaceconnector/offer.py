@@ -27,10 +27,15 @@ class Offer:
         self.publisher = pkg_dict['owner_org']
         self.license = pkg_dict['license_url']
         additional = {
-            "ids:contentType": "https://www.trusts-data.eu/ontology/" + str(pkg_dict['type']).capitalize(),
-            "ids:theme": pkg_dict['theme']
+            "https://www.trusts-data.eu/ontology/asset_type":
+                "https://www.trusts-data.eu/ontology/" + str(pkg_dict['type']).capitalize(),
+            "https://www.trusts-data.eu/ontology/theme": pkg_dict['theme']
         }
+        # FixMe there seems to be an issue with how the DSC handles these
+        # properties. Has been reported already, waiting for solution
+        # https://github.com/International-Data-Spaces-Association/DataspaceConnector/issues/892
         self.additional = additional
+        self.additional = {"ids:version": "3"}
         if "extras" in pkg_dict:
             for entry in pkg_dict["extras"]:
                 if entry["key"] == "catalog":
@@ -42,16 +47,21 @@ class Offer:
             self.offer_iri = None
 
     def to_dictionary(self):
-        return {
+        d = {
             'title': self.title,
             'keywords': self.keywords,
             'publisher': self.publisher,
             'license': self.license,
-            'ids:contentType': self.additional["ids:contentType"],
-            'ids:theme': self.additional["ids:theme"],
         #    'catalog_iri': self.catalog_iri,
         #    'offer_iri': self.offer_iri
         }
+        if "ids:contentType" in self.additional.keys():
+            d['contentType'] = self.additional["ids:contentType"]
+        if "ids:theme" in self.additional.keys():
+            d['theme'] = self.additional["ids:theme"]
+
+        return d
+
 
 
 """

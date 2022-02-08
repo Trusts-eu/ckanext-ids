@@ -21,6 +21,7 @@ class Contract:
         if "pkg_id" in contract_data:
             self.pkg_id = contract_data["pkg_id"]
         else:
+            print("No pkg_id was founnd... why?")
             raise KeyError
         if "title" in contract_data:
             self.title = contract_data["title"]
@@ -35,7 +36,9 @@ class Contract:
                         "contract_end_tz": [],
                         }
         self.contract_start = self.validate_date_inputs("contract_start", contract_data, self.errors)
+        print("validated start date")
         self.contract_end = self.validate_date_inputs("contract_end", contract_data, self.errors)
+        print("validated end date")
         self.policies = self.validate_policies(contract_data, self.errors)
         self.errors = {key:val for key, val in self.errors.items() if len(val)}
 

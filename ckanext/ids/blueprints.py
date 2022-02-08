@@ -122,6 +122,9 @@ def push_to_central(data, action):
 
 
 def push_to_dataspace_connector(data):
+    """
+    If data is already in dataspace connector, nothing will be added
+    """
     c = plugins.toolkit.g
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
@@ -133,6 +136,20 @@ def push_to_dataspace_connector(data):
     catalog = config.get("ckanext.ids.connector_catalog_iri")
     # try to populate this with fields from the package
     offer = Offer(data)
+
+    # If the offer has, for some reason an IRI, but this does not exist in the
+    # local dataspace connector, we just create a new IRI for it
+    if offer.offer_iri is not None and not \
+            local_resource_dataspace_connector.resource_exists(offer.offer_iri):
+        offer.offer_iri = None
+        for value in data["resources"]:
+            rep_iri = value["representation"]
+            if not local_resource_dataspace_connector.resource_exists(rep_iri):
+                value["representation"] = None
+            art_iri = value["artifact"]
+            if not local_resource_dataspace_connector.resource_exists(art_iri):
+                value["artifact"] = None
+
     if offer.offer_iri is not None:
         if local_resource_dataspace_connector.update_offered_resource(offer.offer_iri, offer.to_dictionary()):
             offers = offer.offer_iri
@@ -246,12 +263,20 @@ def push_organization_view(id):
 
 @ids_actions.route('/ids/actions/publish/<id>', methods=['POST'])
 def publish_action(id):
-    local_connector_resource_api = Connector().get_resource_api()
+    local_connector = Connector()
+    local_connector_resource_api = local_connector.get_resource_api()
     c = plugins.toolkit.g
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
     dataset = toolkit.get_action('package_show')(context, {'id': id})
+
+    # If they are trying to create a contract for a package not yet in the DSC
+    # this action will push the package. But if the package already exists
+    # nothing new will be pushed
+    push_to_dataspace_connector(dataset)
+    dataset = toolkit.get_action('package_show')(context, {'id': id})
+
     c.pkg_dict = dataset
     contract_meta = request.data
     # create the contract
@@ -270,13 +295,31 @@ def publish_action(id):
         rules.append(rule_id)
     # add rules to contract
     local_connector_resource_api.add_rule_to_contract(contract=contract_id, rule=rules)
-    resource_id = next((sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)["value"]
+    resource_id = next((sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)
+    log.info(resource_id)
+    print("....         ",resource_id,"   ........      ...")
+
+    resource_id = next(
+            (sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)
+    resource_id = resource_id["value"]
     local_connector_resource_api.add_contract_to_resource(resource=resource_id, contract=contract_id)
     extras = dataset["extras"]
-    extras.append({"key": "contract", "value": contract_id})
-    extras.append({"key": "contract_meta", "value": contract_meta.toJSON()})
+    # If this already had a contract, we overwrite it
+    # Otherwise we get a duplicate-error from the package_patch action below
+    contract_found = False
+    for d in extras:
+        if d["key"]=="contract":
+            d["value"]=contract_id
+            contract_found = True
+        if d["key"]=="contract_meta":
+            d["value"]=contract_meta.toJSON()
+    if not contract_found:
+        extras.append({"key":  "contract", "value": contract_id})
+        extras.append({"key": "contract_meta", "value": contract_meta.toJSON()})
 
     updated_package = toolkit.get_action("package_patch")(context, {"id": id, "extras": extras})
+    local_connector.send_resource_to_broker(resource_uri=resource_id)
+
 
 
 

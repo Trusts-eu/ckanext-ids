@@ -9,12 +9,13 @@ from ckan.common import config
 from ckan.lib.plugins import DefaultTranslation
 
 import ckanext.ids.blueprints as blueprints
+from ckanext.ids.metadatabroker.client import broker_package_search
 
 log = logging.getLogger("ckanext")
 
 
 class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
-    log.debug("\n................ Plugin Init................\n+")
+    log.debug("\n................ Plugin Init 5................\n+")
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IOrganizationController, inherit=True)
     plugins.implements(plugins.ITranslation)
@@ -41,22 +42,34 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 
         return schema
 
-    # def after_search(self, search_results, search_params):
-    #     log.debug("\n................ After Search ................\n+")
-    #     import json
-    #     log.debug("\n\nParams------------------------------------------>")
-    #     log.debug(json.dumps(search_params, indent=2))
-    #     log.debug("\n\nResults----------------------------------------->")
-    #     log.debug(json.dumps(search_results, indent=2))
-    #
-    #     start = search_params.get("start", 0)
-    #     search_query = search_params.get("q", None)
-    #     fq = tuple(search_params.get("fq", None))
-    #     results_from_broker = broker_package_search(q=search_query,
-    #                                                 fq=fq,
-    #                                                 start_offset=start)
-    #
-    #     return search_results
+    def after_search(self, search_results, search_params):
+        log.debug("\n................ After Search ................\n+")
+        import json
+        #log.debug("\n\nParams------------------------------------------>")
+        #log.debug(json.dumps(search_params, indent=2))
+        #log.debug("\n\nResults----------------------------------------->")
+        #log.debug(json.dumps(search_results, indent=2))
+
+        start = search_params.get("start", 0)
+        search_query = search_params.get("q", None)
+
+        # The parameters include organizations, we remove this
+        fqset = search_params.get("fq", None)
+        if fqset is not None:
+            fq2=[]
+            for f in fqset:
+                fq2.append(" ".join([x for x in f.split()
+                                     if "+organization" not in x]))
+
+            fqset=fq2
+            fqset.sort()
+
+        fq = tuple(fqset)
+        results_from_broker = broker_package_search(q=search_query,
+                                                    fq=fq,
+                                                    start_offset=start)
+
+        return search_results
 
     def before_view(self, pkg_dict):
         log.debug("\n................ Before View ................\n+")
