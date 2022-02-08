@@ -86,9 +86,17 @@ def _sparql_describe_many_resources(resources: Set[rdflib.URIRef]) -> str:
     return query
 
 # ToDo  Take the resource_type into account in the query
-def _sparl_get_all_resources(resource_type: str):
+def _sparl_get_all_resources(resource_type: str,
+                             type_pred ="https://www.trusts-data.eu/ontology/asset_type"):
     query = """SELECT ?resultUri ?type WHERE
-    { ?resultUri a ?type }"""
+                    { ?resultUri a ?type . """
+    if resource_type is None or resource_type=="None":
+        pass
+    else:
+        typeuri = URI("https://www.trusts-data.eu/ontology/" + \
+                  resource_type.capitalize())
+        query += "\n ?resultUri " + URI(type_pred).n3() + typeuri.n3() + "."
+    query += "\n}"
     return query
 
 
@@ -162,13 +170,15 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     requested_type = None
     try:
         if fq is not None:
-            requested_type = [x for x in fq["fq"]
-                              if x.startswith("+dataset_type")][0].split(":")[
-                -1]
+            requested_type = [x for x in fq
+                              if x.startswith("+type")][0]
+            requested_type = [x for x in requested_type.split(" ")
+                              if x.startswith("+type")]
+            requested_type = requested_type[0].split(":")[-1].capitalize()
     except:
         pass
 
-    log.debug("Requested search type was " + str(requested_type))
+    log.debug("Requested search type was " + str(requested_type)+"\n\n")
     search_results = []
     resource_uris = []
 

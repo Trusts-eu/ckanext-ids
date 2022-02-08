@@ -32,9 +32,6 @@ class Offer:
                                                           'type']).capitalize(),
             "https://www.trusts-data.eu/ontology/theme": pkg_dict['theme']
         }
-        # FixMe there seems to be an issue with how the DSC handles these
-        # properties. Has been reported already, waiting for solution
-        # https://github.com/International-Data-Spaces-Association/DataspaceConnector/issues/892
         self.additional = additional
 
         if "extras" in pkg_dict:
@@ -61,10 +58,6 @@ class Offer:
                 d[k.split(":")[-1]] = v
             else:
                 d[k] = v
-        #if "ids:contentType" in self.additional.keys():
-        #    d['contentType'] = self.additional["ids:contentType"]
-        #if "ids:theme" in self.additional.keys():
-        #    d['theme'] = self.additional["ids:theme"]
 
         return d
 
