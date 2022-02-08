@@ -13,7 +13,9 @@ from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.dataspaceconnector.offer import Offer
 from ckanext.ids.dataspaceconnector.resource import Resource
 from ckanext.ids.dataspaceconnector.contract import Contract
+from dateutil import tz
 import requests
+import datetime
 import logging
 
 from werkzeug.datastructures import ImmutableMultiDict
@@ -336,6 +338,7 @@ def publish(id, offering_info=None, errors=None):
     c.usage_policies = config.get("ckanext.ids.usage_control_policies")
     c.offering = {}
     c.errors = {}
+    c.current_date_time = datetime.datetime.now(tz=tz.tzlocal()).replace(microsecond=0)
     if request.method == "POST":
         try:
             contract = Contract(request.form)
