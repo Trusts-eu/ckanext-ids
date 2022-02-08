@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 
 from flask import Blueprint, jsonify, make_response, request
 import ckan.plugins.toolkit as toolkit
@@ -131,7 +132,8 @@ def push_to_dataspace_connector(data):
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
-    local_resource_dataspace_connector = Connector().get_resource_api()
+    local_connector = Connector()
+    local_resource_dataspace_connector = local_connector.get_resource_api()
     # sync calls to the dataspace connector to create the appropriate objects
     # this will be constant.
     # It might cause an error if the connector does not persist it's data. A restart should fix the problem
@@ -141,6 +143,7 @@ def push_to_dataspace_connector(data):
 
     # If the offer has, for some reason an IRI, but this does not exist in the
     # local dataspace connector, we just create a new IRI for it
+    # FIXME: check to merge with code below
     if offer.offer_iri is not None and not \
             local_resource_dataspace_connector.resource_exists(offer.offer_iri):
         offer.offer_iri = None
@@ -165,8 +168,7 @@ def push_to_dataspace_connector(data):
     else:
         offers = local_resource_dataspace_connector.create_offered_resource(offer.to_dictionary())
         local_resource_dataspace_connector.add_resource_to_catalog(catalog, offers)
-    # FIXME put these in an object and create a nice method
-    extras = [{"key": "catalog", "value": catalog}, {"key": "offers", "value": offers}]
+    # adding resources
     for value in data["resources"]:
         # this has also to run for every resource
         resource = Resource(value)
@@ -187,8 +189,13 @@ def push_to_dataspace_connector(data):
         # add these on the resource meta
         patch_data = {"id": value["id"], "representation": representation, "artifact": artifact}
         logic.action.patch.resource_patch(context, data_dict=patch_data)
+    changed_extras = [{"key": "catalog", "value": catalog}, {"key": "offers", "value": offers}]
+    extras = merge_extras(data.get("extras", []), changed_extras)
 
     toolkit.get_action("package_patch")(context, {"id": data["id"], "extras": extras})
+    if any(dictionary.get('key', '') == 'contract' for dictionary in extras):
+        # push to the broker if the package has a contract
+        local_connector.send_resource_to_broker(resource_uri=offer.offer_iri)
     return True
 
 def delete_from_dataspace_connector(data):
@@ -276,8 +283,8 @@ def publish_action(id):
     # If they are trying to create a contract for a package not yet in the DSC
     # this action will push the package. But if the package already exists
     # nothing new will be pushed
-    push_to_dataspace_connector(dataset)
-    dataset = toolkit.get_action('package_show')(context, {'id': id})
+#    push_to_dataspace_connector(dataset)
+#    dataset = toolkit.get_action('package_show')(context, {'id': id})
 
     c.pkg_dict = dataset
     contract_meta = request.data
@@ -297,13 +304,7 @@ def publish_action(id):
         rules.append(rule_id)
     # add rules to contract
     local_connector_resource_api.add_rule_to_contract(contract=contract_id, rule=rules)
-    resource_id = next((sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)
-    log.info(resource_id)
-    print("....         ",resource_id,"   ........      ...")
-
-    resource_id = next(
-            (sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)
-    resource_id = resource_id["value"]
+    resource_id = next((sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)["value"]
     local_connector_resource_api.add_contract_to_resource(resource=resource_id, contract=contract_id)
     extras = dataset["extras"]
     # If this already had a contract, we overwrite it
@@ -386,3 +387,14 @@ def create_or_get_catalog_id():
         catalog = {"title": title}
         catalog_iri = local_connector_resource_api.create_catalog(catalog)
     config.store.update({"ckanext.ids.connector_catalog_iri": catalog_iri})
+
+def merge_extras(old, new):
+    # Using defaultdict
+    temp = defaultdict(dict)
+    log.info("merging extras")
+    for elem in old:
+        temp[elem['key']] = (elem['value'])
+    for elem in new:
+        temp[elem['key']] = (elem['value'])
+    merged = [{"key":key, "value":value} for key, value in temp.items()]
+    return merged

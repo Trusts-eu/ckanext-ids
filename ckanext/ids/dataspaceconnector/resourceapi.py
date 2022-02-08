@@ -68,11 +68,11 @@ class ResourceApi:
         return response.headers["Location"]
 
     def update_representation(self, data={}):
-        response = self.session.put(data["representation_iri"], json=data)
+        response = self.session.put(data.representation_iri, json=data)
         return response.status_code == 204
 
     def delete_representation(self, data={}):
-        response = self.session.delete(data["representation_iri"], json=data)
+        response = self.session.delete(data.representation_iri, json=data)
         return response.status_code == 204
 
     def create_artifact(self, data={"value": "SOME LONG VALUE"}):
