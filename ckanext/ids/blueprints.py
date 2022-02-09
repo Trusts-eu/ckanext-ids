@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 
 from flask import Blueprint, jsonify, make_response, request
 import ckan.plugins.toolkit as toolkit
@@ -13,7 +14,9 @@ from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.dataspaceconnector.offer import Offer
 from ckanext.ids.dataspaceconnector.resource import Resource
 from ckanext.ids.dataspaceconnector.contract import Contract
+from dateutil import tz
 import requests
+import datetime
 import logging
 
 from werkzeug.datastructures import ImmutableMultiDict
@@ -122,25 +125,50 @@ def push_to_central(data, action):
 
 
 def push_to_dataspace_connector(data):
+    """
+    If data is already in dataspace connector, nothing will be added
+    """
     c = plugins.toolkit.g
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
-    local_resource_dataspace_connector = Connector().get_resource_api()
+    local_connector = Connector()
+    local_resource_dataspace_connector = local_connector.get_resource_api()
     # sync calls to the dataspace connector to create the appropriate objects
     # this will be constant.
     # It might cause an error if the connector does not persist it's data. A restart should fix the problem
     catalog = config.get("ckanext.ids.connector_catalog_iri")
     # try to populate this with fields from the package
     offer = Offer(data)
-    if offer.offer_iri is None:
-        offers = local_resource_dataspace_connector.create_offered_resource(Offer(data))
-        local_resource_dataspace_connector.add_resource_to_catalog(catalog, offers)
+
+    # If the offer has, for some reason an IRI, but this does not exist in the
+    # local dataspace connector, we just create a new IRI for it
+    # FIXME: check to merge with code below
+    if offer.offer_iri is not None and not \
+            local_resource_dataspace_connector.resource_exists(offer.offer_iri):
+        offer.offer_iri = None
+        for value in data["resources"]:
+            rep_iri = value["representation"]
+            if not local_resource_dataspace_connector.resource_exists(rep_iri):
+                value["representation"] = None
+            art_iri = value["artifact"]
+            if not local_resource_dataspace_connector.resource_exists(art_iri):
+                value["artifact"] = None
+
+    if offer.offer_iri is not None:
+        if local_resource_dataspace_connector.update_offered_resource(offer.offer_iri, offer.to_dictionary()):
+            offers = offer.offer_iri
+        else:
+            # The offer does not exist on the dataspace connector. This might mean that the offer was manually deleted or
+            # lost after some restart. The package dictionary contains the iri of the deleted offer so it fails. For now,
+            # manually editing the package and the resources is needed, or even deleting the package and create from scratch.
+            # We should implement a method to do this through the admin/manage menu
+            log.error("Offer not found on the Dataspace Connector.")
+            return False
     else:
-        local_resource_dataspace_connector.update_offered_resource(offer)
-        offers = offer.offer_iri
-    # FIXME put these in an object and create a nice method
-    extras = [{"key": "catalog", "value": catalog}, {"key": "offers", "value": offers}]
+        offers = local_resource_dataspace_connector.create_offered_resource(offer.to_dictionary())
+        local_resource_dataspace_connector.add_resource_to_catalog(catalog, offers)
+    # adding resources
     for value in data["resources"]:
         # this has also to run for every resource
         resource = Resource(value)
@@ -161,9 +189,14 @@ def push_to_dataspace_connector(data):
         # add these on the resource meta
         patch_data = {"id": value["id"], "representation": representation, "artifact": artifact}
         logic.action.patch.resource_patch(context, data_dict=patch_data)
+    changed_extras = [{"key": "catalog", "value": catalog}, {"key": "offers", "value": offers}]
+    extras = merge_extras(data.get("extras", []), changed_extras)
 
-    updated_package = toolkit.get_action("package_patch")(context, {"id": data["id"], "extras": extras})
-    return updated_package
+    toolkit.get_action("package_patch")(context, {"id": data["id"], "extras": extras})
+    if any(dictionary.get('key', '') == 'contract' for dictionary in extras):
+        # push to the broker if the package has a contract
+        local_connector.send_resource_to_broker(resource_uri=offer.offer_iri)
+    return True
 
 def delete_from_dataspace_connector(data):
     c = plugins.toolkit.g
@@ -214,7 +247,11 @@ def push_package(id):
 @ids_actions.route('/ids/view/push_package/<id>', methods=['GET'])
 def push_package_view(id):
     response = push_package(id)
-    h.flash_success( _('Object pushed to the DataspaceConnector Catalog.'))
+    if response:
+        h.flash_success(_('Object pushed to the DataspaceConnector Catalog.'))
+    else:
+        h.flash_error(_('Offer not found on the Dataspace Connector. Perhaps it was deleted manually on'
+                           ' the Dataspace Connector. Contact your adinistrator'))
     return toolkit.redirect_to('dataset.read', id=id)
 
 
@@ -235,12 +272,20 @@ def push_organization_view(id):
 
 @ids_actions.route('/ids/actions/publish/<id>', methods=['POST'])
 def publish_action(id):
-    local_connector_resource_api = Connector().get_resource_api()
+    local_connector = Connector()
+    local_connector_resource_api = local_connector.get_resource_api()
     c = plugins.toolkit.g
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
     dataset = toolkit.get_action('package_show')(context, {'id': id})
+
+    # If they are trying to create a contract for a package not yet in the DSC
+    # this action will push the package. But if the package already exists
+    # nothing new will be pushed
+#    push_to_dataspace_connector(dataset)
+#    dataset = toolkit.get_action('package_show')(context, {'id': id})
+
     c.pkg_dict = dataset
     contract_meta = request.data
     # create the contract
@@ -262,10 +307,22 @@ def publish_action(id):
     resource_id = next((sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)["value"]
     local_connector_resource_api.add_contract_to_resource(resource=resource_id, contract=contract_id)
     extras = dataset["extras"]
-    extras.append({"key": "contract", "value": contract_id})
-    extras.append({"key": "contract_meta", "value": contract_meta.toJSON()})
+    # If this already had a contract, we overwrite it
+    # Otherwise we get a duplicate-error from the package_patch action below
+    contract_found = False
+    for d in extras:
+        if d["key"]=="contract":
+            d["value"]=contract_id
+            contract_found = True
+        if d["key"]=="contract_meta":
+            d["value"]=contract_meta.toJSON()
+    if not contract_found:
+        extras.append({"key":  "contract", "value": contract_id})
+        extras.append({"key": "contract_meta", "value": contract_meta.toJSON()})
 
     updated_package = toolkit.get_action("package_patch")(context, {"id": id, "extras": extras})
+    local_connector.send_resource_to_broker(resource_uri=resource_id)
+
 
 
 
@@ -282,6 +339,7 @@ def publish(id, offering_info=None, errors=None):
     c.usage_policies = config.get("ckanext.ids.usage_control_policies")
     c.offering = {}
     c.errors = {}
+    c.current_date_time = datetime.datetime.now(tz=tz.tzlocal()).replace(microsecond=0)
     if request.method == "POST":
         try:
             contract = Contract(request.form)
@@ -329,3 +387,14 @@ def create_or_get_catalog_id():
         catalog = {"title": title}
         catalog_iri = local_connector_resource_api.create_catalog(catalog)
     config.store.update({"ckanext.ids.connector_catalog_iri": catalog_iri})
+
+def merge_extras(old, new):
+    # Using defaultdict
+    temp = defaultdict(dict)
+    log.info("merging extras")
+    for elem in old:
+        temp[elem['key']] = (elem['value'])
+    for elem in new:
+        temp[elem['key']] = (elem['value'])
+    merged = [{"key":key, "value":value} for key, value in temp.items()]
+    return merged

@@ -4,7 +4,7 @@
 {% set private = data.get('private') %}
 
 {% set name = offering.title if offering.title else data["title"] %}
-{% set start_datetime = offering.contract_start if offering.contract_start else '' %}
+{% set start_datetime = offering.contract_start if offering.contract_start else c.current_date_time %}
 {% set end_datetime = offering.contract_end if offering.contract_end else '' %}
 {% set offering_data = {
     'contract_start' : start_datetime,
@@ -45,7 +45,7 @@ then itself be extended to add/remove blocks of functionality. #}
             {% endblock %}
 
             {% block start_datetime %}
-                {%- set start_datetime_filed = {
+                {%- set start_datetime_field = {
                                   'field_name' : 'contract_start',
                                   'label' : 'Contract start',
                                   'validators' : 'scheming_isodatetime_tz convert_to_json_if_datetime',
@@ -53,7 +53,7 @@ then itself be extended to add/remove blocks of functionality. #}
                                   }
                 -%}
                 {%- snippet 'scheming/form_snippets/datetime_tz.html',
-                                          field=start_datetime_filed,
+                                          field=start_datetime_field,
                                           data=offering_data,
                                           errors=errors,
                                           licenses=licenses,
@@ -63,7 +63,7 @@ then itself be extended to add/remove blocks of functionality. #}
             {% endblock %}
 
             {% block end_datetime %}
-                {%- set end_datetime_fieled = {
+                {%- set end_datetime_field = {
                   'field_name' : 'contract_end',
                   'label': 'Contract end',
                   'validators' : 'scheming_isodatetime_tz convert_to_json_if_datetime',
@@ -71,7 +71,7 @@ then itself be extended to add/remove blocks of functionality. #}
                   }
                 -%}
                 {%- snippet 'scheming/form_snippets/datetime_tz.html',
-                          field=end_datetime_fieled,
+                          field=end_datetime_field,
                           data=offering_data,
                           errors=errors,
                           licenses=licenses,

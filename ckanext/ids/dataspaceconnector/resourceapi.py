@@ -39,20 +39,28 @@ class ResourceApi:
         response = self.session.post(self.recipient + "/api/catalogs", json=data)
         return response.headers["Location"]
 
+    def resource_exists(self, offer_uri:str):
+        if not offer_uri.startswith(self.recipient + "/api/"):
+            raise ValueError
+        response = self.session.get(offer_uri)
+        return response.status_code < 399
+
     def get_catalogs(self, data={}):
         response = self.session.get(self.recipient + "/api/catalogs")
+        print("GETting catalogues returned:", response.status_code,
+              "url:", self.recipient+"/api/catalogs")
         return json.loads(response.text)
 
     def create_offered_resource(self, data={}):
         response = self.session.post(self.recipient + "/api/offers", json=data)
         return response.headers["Location"]
 
-    def update_offered_resource(self, data={}):
-        response = self.session.put(data.offer_iri, json=data)
+    def update_offered_resource(self, offered_resource, data={}):
+        response = self.session.put(offered_resource, json=data)
         return response.status_code == 204
 
-    def delete_offered_resource(self, data={}):
-        response = self.session.delete(data.offer_iri, json=data)
+    def delete_offered_resource(self, offered_resource, data={}):
+        response = self.session.delete(offered_resource, json=data)
         return response.status_code == 204
 
     def create_representation(self, data={}):
@@ -167,3 +175,5 @@ class ResourceApi:
 
     def get_artifacts_for_agreement(self, agreement):
         return json.loads(self.session.get(agreement + "/artifacts").text)
+
+
