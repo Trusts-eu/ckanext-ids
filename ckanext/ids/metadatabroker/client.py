@@ -124,6 +124,8 @@ def listofdicts2graph(lod: List[Dict],
 def _to_ckan_result_format(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
     resource_graphs = [x for x in g if x["@type"] == "ids:Resource"]
+    if "theme" not in resource_graphs[0].keys():
+        return None
     representation_graphs = [x for x in g if
                              x["@type"] == "ids:Representation"]
     artifact_graphs = [x for x in g if x["@type"] == "ids:Artifact"]
@@ -152,8 +154,10 @@ def _to_ckan_result_format(raw_jsonld: Dict):
     packagemeta["metadata_modified"] = resource_graphs[0]["modified"]
     packagemeta["name"] = resource_graphs[0]["title"]
     packagemeta["title"] = resource_graphs[0]["title"]
-    packagemeta["type"] = resource_graphs[0]["asset_type"].split("/")[-1]
+    packagemeta["type"] = resource_graphs[0]["asset_type"].split("/")[
+        -1].lower()
     packagemeta["theme"] = resource_graphs[0]["theme"].split("/")[-1]
+    packagemeta["version"] = resource_graphs[0]["version"]
 
     packagemeta["creator_user_id"] = "X"
     packagemeta["isopen"]: None
@@ -163,21 +167,59 @@ def _to_ckan_result_format(raw_jsonld: Dict):
     packagemeta["num_tags"] = 0
     packagemeta["private"] = False
     packagemeta["state"] = "active"
+    packagemeta["relationships_as_object"] =  []
+    packagemeta["relationships_as_subject"] =  []
+    packagemeta["url"] = None
+    packagemeta["tags"] = []  # (/)
+    packagemeta["groups"] = []  # (/)
+
+    packagemeta["dataset_count"] = 0
+    packagemeta["service_count"] = 0
+    packagemeta["application_count"] = 0
+    packagemeta[packagemeta["type"]+"count"] = 1
+
+    for rg in representation_graphs:
+        empty_ckan_resource = {
+            "artifact": rg["instance"],
+            "cache_last_updated": None,
+            "cache_url": None,
+            "created": resource_graphs[0]["created"],
+            "description": resource_graphs[0]["description"],
+            "format": "__MISSING__",
+            "hash": artifact_graphs[0]["checkSum"],
+            "id": rg["@id"],
+            "last_modified": resource_graphs[0]["modified"],
+            "metadata_modified": rg["modified"],
+            "mimetype": rg["mediaType"],
+            "mimetype_inner": None,
+            "name": resource_graphs[0]["title"],
+            "package_id": resource_graphs[0]["sameAs"],
+            "position": 0,
+            "representation": rg["sameAs"],
+            "resource_type": "resource",
+            "size": artifact_graphs[0]["ids:byteSize"],
+            "state": "active",
+            "url": rg["sameAs"],
+            "url_type": "upload"
+        }
+        resources.append(empty_ckan_resource)
 
     packagemeta["organization"] = organization_data
     packagemeta["owner_org"] = organization_data["id"]
     packagemeta["resources"] = resources
     packagemeta["num_resources"] = len(artifact_graphs)
 
+    return packagemeta
+
 
 @ckan.logic.side_effect_free
 @cachetools.func.ttl_cache(3)  # CKan does a bunch equivalent requests in
 # rapid succession
 def broker_package_search(q=None, start_offset=0, fq=None):
-    log.debug("\n--- STARTING  BROKER SEARCH  ----------------------------\n")
-    log.debug(str(q))
-    log.debug(str(fq))
-    log.debug("-----------------------------------------------------------\n")
+    #log.debug("\n--- STARTING  BROKER SEARCH  ----------------------------\n")
+    #log.debug(str(q))
+    #log.debug(str(fq))
+    #log.debug("-----------------------------------------------------------\n")
     default_search = "*:*"
     search_string = q if q is not None else default_search
 
@@ -210,10 +252,11 @@ def broker_package_search(q=None, start_offset=0, fq=None):
                          for x in parsed_response
                          if URI(x["type"]) == idsresource])
 
-    log.debug("RESOURCES FOUND <------------------------------------\n")
-    for ru in resource_uris:
-        log.debug(ru.n3() + " <------------------------------------")
-    log.debug("---------------------------||||||||||||||")
+    if len(resource_uris)>0:
+        log.debug("RESOURCES FOUND <------------------------------------\n")
+        for ru in resource_uris:
+            log.debug(ru.n3() + " <------------------------------------")
+        log.debug("---------------------------||||||||||||||")
 
     if len(resource_uris) == 0:
         return search_results
@@ -225,10 +268,15 @@ def broker_package_search(q=None, start_offset=0, fq=None):
         ".\n....................................................................")
     for k, v in descriptions.items():
         log.debug(k)
-        log.debug(_to_ckan_result_format(v))
+        pm = _to_ckan_result_format(v)
+        log.debug(pm)
+        log.debug(
+            "------------------------------------------------------------------")
+        if pm is not None:
+            search_results.append(pm)
 
     log.debug(
-        "\n\n....................................................................\n")
+        "\n....................................................................\n\n\n")
 
     # --------- This was an attempt to do it over SPARQL describe
     # ---------- Should be faster.. but harder to parse
@@ -245,3 +293,4 @@ def broker_package_search(q=None, start_offset=0, fq=None):
 
     log.debug("---- END BROKER SEARCH ------------\n-----------\n----\n-----")
     return search_results
+

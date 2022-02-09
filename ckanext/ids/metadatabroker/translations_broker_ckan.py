@@ -33,15 +33,15 @@ empty_result = {
     "theme": "__MISSING__",   # (/)
     "title": "__MISSING__",   # (/)
     "type": "__MISSING__",   # (/)
-    "url": None,
-    "version": "__MISSING__",
-    "tags": [],
-    "groups": [],
-    "dataset_count": 0,
-    "service_count": 0,
-    "application_count": 0,
-    "relationships_as_object": [],
-    "relationships_as_subject": [],
+    "url": None,  # (/)
+    "version": "__MISSING__",  # (/)
+    "tags": [],  # (/)
+    "groups": [],  # (/)
+    "dataset_count": 0,   # (/)
+    "service_count": 0,  # (/)
+    "application_count": 0,  # (/)
+    "relationships_as_object": [], # (/)
+    "relationships_as_subject": [], # (/)
     "resources": [ ],
     "organization": {}  # (/)
 }

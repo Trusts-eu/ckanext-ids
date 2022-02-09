@@ -69,6 +69,12 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
                                                     fq=fq,
                                                     start_offset=start)
 
+        log.debug("search_results\n\n\n\n",
+                  str(search_results),
+                  "\n---------------------------------------\n\n\n")
+
+        search_results["results"] += results_from_broker
+        search_results["count"] +=  len(results_from_broker)
         return search_results
 
     def before_view(self, pkg_dict):
