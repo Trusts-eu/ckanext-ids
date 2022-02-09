@@ -101,6 +101,7 @@ class Connector:
         return response.text
 
     def ask_broker_description(self, element_uri: str):
+        resource_contract_tuples = []
         if not self.broker_knows_us:
             self.announce_to_broker()
         if len(element_uri) < 5 or ":" not in element_uri:
@@ -116,7 +117,9 @@ class Connector:
             log.error("Got code " + str(response.status_code) + " in describe")
             raise ConnectorException("Code: " + str(response.status_code) +
                                      " Text: " + str(response.text))
-        return response.json()
+
+        graphs = response.json()
+        return graphs
 
     def announce_to_broker(self):
         # If for some reason this is the first resource we send to the
@@ -149,7 +152,5 @@ class Connector:
                                  params=params,
                                  auth=HTTPBasicAuth(self.auth[0],
                                                     self.auth[1]))
-
-
 
         return response.status_code < 299

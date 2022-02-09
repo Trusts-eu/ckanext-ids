@@ -1,4 +1,6 @@
-import json
+import logging
+from typing import Set, List, Dict
+
 import logging
 from typing import Set, List, Dict
 
@@ -8,7 +10,8 @@ import ckan.logic as logic
 import rdflib
 
 from ckanext.ids.dataspaceconnector.connector import Connector
-from ckanext.ids.metadatabroker.translations_broker_ckan import URI, empty_result
+from ckanext.ids.metadatabroker.translations_broker_ckan import URI, \
+    empty_result
 
 # Define some shortcuts
 # Ensure they are module-private so that they don't get loaded as available
@@ -85,16 +88,17 @@ def _sparql_describe_many_resources(resources: Set[rdflib.URIRef]) -> str:
 
     return query
 
+
 # ToDo  Take the resource_type into account in the query
 def _sparl_get_all_resources(resource_type: str,
-                             type_pred ="https://www.trusts-data.eu/ontology/asset_type"):
+                             type_pred="https://www.trusts-data.eu/ontology/asset_type"):
     query = """SELECT ?resultUri ?type WHERE
                     { ?resultUri a ?type . """
-    if resource_type is None or resource_type=="None":
+    if resource_type is None or resource_type == "None":
         pass
     else:
         typeuri = URI("https://www.trusts-data.eu/ontology/" + \
-                  resource_type.capitalize())
+                      resource_type.capitalize())
         query += "\n ?resultUri " + URI(type_pred).n3() + typeuri.n3() + "."
     query += "\n}"
     return query
@@ -117,25 +121,27 @@ def listofdicts2graph(lod: List[Dict],
     return g
 
 
-def _to_ckan_result_format(raw_jsonld : Dict):
+def _to_ckan_result_format(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
-    resource_graphs = [x for x in g if x["@type"]=="ids:Resource"]
-    representation_graphs = [x for x in g if x["@type"]=="ids:Representation"]
-    artifact_graphs = [x for x in g if x["@type"]=="ids:Artifact"]
+    resource_graphs = [x for x in g if x["@type"] == "ids:Resource"]
+    representation_graphs = [x for x in g if
+                             x["@type"] == "ids:Representation"]
+    artifact_graphs = [x for x in g if x["@type"] == "ids:Artifact"]
 
     # ToDo get this from the central core as well
     organization_data = {
-       "id": "52bc9332-2ba1-4c4f-bf85-5a141cd68423",
-       "name": "orga1",
-       "title": "Orga1",
-       "type": "organization",
-       "description": "",
-       "image_url": "",
-       "created": "2022-02-02T16:32:58.653424",
-       "is_organization": True,
-       "approval_status": "approved",
-       "state": "active"
-     }
+        "id": "52bc9332-2ba1-4c4f-bf85-5a141cd68423",
+        "name": "orga1",
+        "title": "Orga1",
+        "type": "organization",
+        "description": "",
+        "image_url": "",
+        "created": "2022-02-02T16:32:58.653424",
+        "is_organization": True,
+        "approval_status": "approved",
+        "state": "active"
+    }
+    resources = []
 
     packagemeta = empty_result
     packagemeta["id"] = resource_graphs[0]["sameAs"]
@@ -146,13 +152,22 @@ def _to_ckan_result_format(raw_jsonld : Dict):
     packagemeta["metadata_modified"] = resource_graphs[0]["modified"]
     packagemeta["name"] = resource_graphs[0]["title"]
     packagemeta["title"] = resource_graphs[0]["title"]
-    packagemeta["num_resources"] = len(artifact_graphs)
+    packagemeta["type"] = resource_graphs[0]["asset_type"].split("/")[-1]
+    packagemeta["theme"] = resource_graphs[0]["theme"].split("/")[-1]
+
+    packagemeta["creator_user_id"] = "X"
+    packagemeta["isopen"]: None
+    packagemeta["maintainer"] = None
+    packagemeta["maintainer_email"] = None
+    packagemeta["notes"] = None
+    packagemeta["num_tags"] = 0
+    packagemeta["private"] = False
+    packagemeta["state"] = "active"
+
     packagemeta["organization"] = organization_data
     packagemeta["owner_org"] = organization_data["id"]
-    packagemeta["private"] = False
-    packagemeta["type"]
-
-
+    packagemeta["resources"] = resources
+    packagemeta["num_resources"] = len(artifact_graphs)
 
 
 @ckan.logic.side_effect_free
@@ -178,7 +193,7 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     except:
         pass
 
-    log.debug("Requested search type was " + str(requested_type)+"\n\n")
+    log.debug("Requested search type was " + str(requested_type) + "\n\n")
     search_results = []
     resource_uris = []
 
@@ -197,7 +212,7 @@ def broker_package_search(q=None, start_offset=0, fq=None):
 
     log.debug("RESOURCES FOUND <------------------------------------\n")
     for ru in resource_uris:
-        log.debug(ru.n3()+" <------------------------------------")
+        log.debug(ru.n3() + " <------------------------------------")
     log.debug("---------------------------||||||||||||||")
 
     if len(resource_uris) == 0:
@@ -206,29 +221,27 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     descriptions = {ru.n3(): connector.ask_broker_description(ru.n3()[1:-1])
                     for ru in resource_uris}
 
-    log.debug(".\n....................................................................")
-    for k,v in descriptions.items():
+    log.debug(
+        ".\n....................................................................")
+    for k, v in descriptions.items():
         log.debug(k)
-        log.debug(str(v))
+        log.debug(_to_ckan_result_format(v))
 
     log.debug(
         "\n\n....................................................................\n")
 
-
-
     # --------- This was an attempt to do it over SPARQL describe
     # ---------- Should be faster.. but harder to parse
     # log.info("URIs:\n"+"\n".join([x.n3() for x in resource_uris]))
-    #query_for_info = _sparql_describe_many_resources(resource_uris)
-    #raw_response = connector.query_broker(query_for_info)
-    #all_triples = _parse_broker_tabular_response(raw_response)
-    #g = listofdicts2graph(all_triples)
-    #log.debug("-----INFO FROM BROKER ------------------------------")
-    #rj = json.dumps(all_triples, indent=2)
-    #for ru in resource_uris:
+    # query_for_info = _sparql_describe_many_resources(resource_uris)
+    # raw_response = connector.query_broker(query_for_info)
+    # all_triples = _parse_broker_tabular_response(raw_response)
+    # g = listofdicts2graph(all_triples)
+    # log.debug("-----INFO FROM BROKER ------------------------------")
+    # rj = json.dumps(all_triples, indent=2)
+    # for ru in resource_uris:
     #    r = {}
-    #log.debug(rj)
-
+    # log.debug(rj)
 
     log.debug("---- END BROKER SEARCH ------------\n-----------\n----\n-----")
     return search_results

@@ -13,26 +13,26 @@ def URI(somestr: str):
 empty_result = {
     "author": None,
     "author_email": None,
-    "creator_user_id": "__MISSING__",
+    "creator_user_id": "__MISSING__", #  (/)
     "id": "__MISSING__",   # (/)
-    "isopen": None,
+    "isopen": None,    # (/)
     "license_id": "__MISSING__",  # (/)
     "license_title": "__MISSING__",  # (/)
     "license_url": "__MISSING__",   # (/)
-    "maintainer": None,
-    "maintainer_email": None,
+    "maintainer": None, # (/)
+    "maintainer_email": None,  # (/)
     "metadata_created": "__MISSING__",   # (/)
     "metadata_modified": "__MISSING__",   # (/)
-    "name": "__MISSING__",
-    "notes": None,
+    "name": "__MISSING__", # (/)
+    "notes": None,  # (/)
     "num_resources": 0,  # (/)
-    "num_tags": 0,
+    "num_tags": 0, # (/)
     "owner_org": "__MISSING__",   # (/)
     "private": None, # (/)
-    "state": "active",
-    "theme": "__MISSING__",
+    "state": "active", # (/)
+    "theme": "__MISSING__",   # (/)
     "title": "__MISSING__",   # (/)
-    "type": "__MISSING__",
+    "type": "__MISSING__",   # (/)
     "url": None,
     "version": "__MISSING__",
     "tags": [],
