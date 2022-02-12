@@ -14,6 +14,8 @@ from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.dataspaceconnector.offer import Offer
 from ckanext.ids.dataspaceconnector.resource import Resource
 from ckanext.ids.dataspaceconnector.contract import Contract
+from ckanext.ids.model import IdsResource, IdsAgreement
+import ckanext.ids.metadatabroker.client as broker_client
 from dateutil import tz
 import requests
 import datetime
@@ -349,7 +351,7 @@ def publish(id, offering_info=None, errors=None):
                 request.data = contract
                 publish_action(id)
         except KeyError as e:
-            print("there was an error")
+            log.error(e)
 
     return toolkit.render('package/publish.html',
                           extra_vars={
@@ -371,6 +373,66 @@ def contracts(id, offering_info=None, errors=None):
                           extra_vars={
                               u'pkg_dict': dataset
                           })
+
+# endpoint to accept a contract offer
+@ids_actions.route('/ids/actions/contract_accept', methods=['POST'])
+def contract_accept():
+    data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
+    local_connector = Connector()
+    local_connector_resource_api = local_connector.get_resource_api()
+    # get the description of the contract
+    contract = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['contractId'])
+    # get the rules as an array
+    obj = contract["ids:permission"]
+    # add the artifact id as the target in rules
+    # FIXME: what if there are more than one artifacts?
+    for item in obj:
+        item["ids:target"] = data["artifactId"]
+    # FIXME: this will return an agreement object. What to do with it? It is needed to consume the resource
+    # negotiate contract
+    try:
+        agreement = local_connector_resource_api.contractRequest(
+            data['provider_url'] + "/api/ids/data",
+            data['resourceId'],
+            data['artifactId'],
+            False,
+            obj)
+        local_resource = IdsResource.get(data['resourceId'])
+        if local_resource == None:
+            local_resource = IdsResource(data['resourceId'])
+            local_resource.save()
+        local_agreement = IdsAgreement(agreement['remoteId'], local_resource, "admin")
+        local_agreement.save()
+        return agreement
+        #resource = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['resourceId'])
+        #package = broker_client._to_ckan_package(resource)
+
+        #create_external_package(package)
+
+        # in case of success create the resource on local and add the agreement and other meta on extra
+    except IOError as e:
+        log.error(e)
+        base.abort(500, e)
+
+def create_external_package(data):
+    # get clean data from the form, data will hold the common meta for all resources
+
+    # iterate through all resources and add them on the package
+    #for resource in resources:
+    #    toolkit.get_action('resource_create')(None, resource)
+
+    c = plugins.toolkit.g
+    context = {'model': model, 'session': model.Session,
+               'user': c.user or c.author, 'auth_user_obj': c.userobj,
+               }
+    try:
+        toolkit.get_action("package_create")(context, data)
+    # unlikely to happen, but just to demonstrate error handling
+    except (ValidationError):
+        return base.abort(404, _(u'There was some error on the send data'))
+    # redirect tp dataset read page
+    return toolkit.redirect_to('dataset.read',
+                               id=id)
 
 def create_or_get_catalog_id():
     local_connector_resource_api = Connector().get_resource_api()

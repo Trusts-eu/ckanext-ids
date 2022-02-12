@@ -1,6 +1,5 @@
-import logging
-from typing import Set, List, Dict
 
+import hashlib
 import logging
 from typing import Set, List, Dict
 
@@ -120,6 +119,26 @@ def listofdicts2graph(lod: List[Dict],
 
     return g
 
+def _to_ckan_package(raw_jsonld: Dict):
+    package = dict()
+    package['title'] = raw_jsonld['ids:title'][0]['@value']
+    package['name'] = hashlib.sha256(raw_jsonld['@id'].encode('utf-8')).hexdigest()
+    package['description'] = raw_jsonld['ids:description'][0]['@value']
+    package['version'] = raw_jsonld['ids:version']
+    package['theme'] = raw_jsonld['https://www.trusts-data.eu/ontology/theme']['@id']
+    package['type'] = get_resource_type(raw_jsonld['https://www.trusts-data.eu/ontology/asset_type']['@id'])
+    package['owner_org'] = raw_jsonld['ids:publisher']['@id']
+    return package
+
+def get_resource_type(type):
+    if type == "https://www.trusts-data.eu/ontology/Dataset":
+        return "dataset"
+    elif type == "https://www.trusts-data.eu/ontology/Application":
+        return "appplication"
+    elif type == "https://www.trusts-data.eu/ontology/Service":
+        return "service"
+    else:
+        raise ValueError("Uknown dataset type: " + type + " Mapping failed.")
 
 def _to_ckan_result_format(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
