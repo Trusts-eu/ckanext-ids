@@ -1,3 +1,6 @@
+import json
+from collections import defaultdict
+
 import datetime
 import json
 import logging
@@ -20,19 +23,10 @@ from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.dataspaceconnector.contract import Contract
 from ckanext.ids.dataspaceconnector.offer import Offer
 from ckanext.ids.dataspaceconnector.resource import Resource
-<<<<<<< HEAD
-from ckanext.ids.dataspaceconnector.contract import Contract
-from ckanext.ids.model import IdsResource, IdsAgreement
-import ckanext.ids.metadatabroker.client as broker_client
-from dateutil import tz
-import requests
-import datetime
-import logging
-
-from werkzeug.datastructures import ImmutableMultiDict
-=======
 from ckanext.ids.metadatabroker.client import graphs_to_ckan_result_format
->>>>>>> intermediate work on fetching info of remote assets
+from ckanext.ids.metadatabroker.client import _to_ckan_package
+from ckanext.ids.metadatabroker.client import graphs_to_contracts
+from ckanext.ids.model import IdsResource, IdsAgreement
 
 tuplize_dict = logic.tuplize_dict
 clean_dict = logic.clean_dict
@@ -199,14 +193,21 @@ def push_to_dataspace_connector(data):
             local_resource_dataspace_connector.update_representation(resource)
             representation = resource.representation_iri
 
+        # The site_url of CKAN is accessible to the whole world, but not to the
+        # DSC. This is specially true if the deployment is local and then
+        # CKAN is something like localhost:5000 which won't resolve well in
+        # the DSC. Thus we re-write the url to take into account the name by
+        # which the CKAN is accessible from the DSC.
+        internal_resource_url = transform_url_internal_network(value["url"])
         if resource.artifact_iri is None:
             artifact = local_resource_dataspace_connector.create_artifact(
-                data={"accessUrl": value["url"]})
+                data={"accessUrl": internal_resource_url})
             local_resource_dataspace_connector.add_artifact_to_representation(
                 representation, artifact)
         else:
             local_resource_dataspace_connector.update_artifact(
-                resource.artifact_iri, data={"accessUrl": value["url"]})
+                resource.artifact_iri,
+                data={"accessUrl": internal_resource_url})
             artifact = resource.artifact_iri
 
         # add these on the resource meta
@@ -222,8 +223,20 @@ def push_to_dataspace_connector(data):
     if any(dictionary.get('key', '') == 'contract' for dictionary in extras):
         # push to the broker if the package has a contract
         local_connector.send_resource_to_broker(resource_uri=offer.offer_iri)
+    else:
+        log.error("This resource doesn't have any contracts, not pushing to "
+                  "broker")
     return True
 
+
+def transform_url_internal_network(url : str,
+                                   container_name : str ="local-ckan",
+                                   container_port : str = "5000"):
+    site_url = str(toolkit.config.get('ckan.site_url'))
+    internal_url = "http://"+container_name+":"+str(container_port)
+    if site_url.endswith("/"):
+        internal_url += "/"
+    return url.replace(site_url,internal_url)
 
 def delete_from_dataspace_connector(data):
     c = plugins.toolkit.g
@@ -340,8 +353,9 @@ def publish_action(id):
     local_connector_resource_api.add_rule_to_contract(contract=contract_id,
                                                       rule=rules)
     resource_id = \
-    next((sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)[
-        "value"]
+        next((sub for sub in dataset["extras"] if sub['key'] == 'offers'),
+             None)[
+            "value"]
     local_connector_resource_api.add_contract_to_resource(resource=resource_id,
                                                           contract=contract_id)
     extras = dataset["extras"]
@@ -418,15 +432,27 @@ def contracts(id, offering_info=None, errors=None):
                               u'pkg_dict': dataset
                           })
 
-<<<<<<< HEAD
+
 # endpoint to accept a contract offer
 @ids_actions.route('/ids/actions/contract_accept', methods=['POST'])
 def contract_accept():
-    data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
+    """
+    Expected body:
+    {
+        "provider_url" : "ht...",
+        "resourceId"   : "ht...",
+        "artifactId"   : "ht...",
+        "contractId"   : "htt..."
+    }
+    """
+    data = clean_dict(
+        dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
+    log.debug("data to contract_accept------\n"+json.dumps(data,indent=2))
     local_connector = Connector()
     local_connector_resource_api = local_connector.get_resource_api()
     # get the description of the contract
-    contract = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['contractId'])
+    contract = local_connector_resource_api.descriptionRequest(
+        data['provider_url'] + "/api/ids/data", data['contractId'])
     # get the rules as an array
     obj = contract["ids:permission"]
     # add the artifact id as the target in rules
@@ -436,7 +462,7 @@ def contract_accept():
     # FIXME: this will return an agreement object. What to do with it? It is needed to consume the resource
     # negotiate contract
     try:
-        agreement = local_connector_resource_api.contractRequest(
+        agreement_response = local_connector_resource_api.contractRequest(
             data['provider_url'] + "/api/ids/data",
             data['resourceId'],
             data['artifactId'],
@@ -446,29 +472,55 @@ def contract_accept():
         if local_resource == None:
             local_resource = IdsResource(data['resourceId'])
             local_resource.save()
-        local_agreement = IdsAgreement(agreement['remoteId'], local_resource, "admin")
+        local_agreement = IdsAgreement(agreement_response['remoteId'], local_resource,
+                                       "admin")
         local_agreement.save()
-        return agreement
-        #resource = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['resourceId'])
-        #package = broker_client._to_ckan_package(resource)
 
-        #create_external_package(package)
+        log.debug("\n\n\n------- Getting Resources After Agreement "
+                  "--------------\n"
+                  "--------------------------------------------------------")
+        agreement_uri = agreement_response["_links"]["self"]["href"]
+        log.debug("agreement_uri :\t" + agreement_uri)
+
+
+
+        artifacts = \
+            local_connector_resource_api.get_artifacts_for_agreement(agreement_uri)
+        first_artifact = \
+        artifacts["_embedded"]["artifacts"][0]["_links"]["self"]["href"]
+        log.debug("artifact_uri :\t" + first_artifact)
+
+        data_response = local_connector_resource_api.get_data(first_artifact)
+        size_data = len(data_response.content)
+        log.debug("size_of_data :\t" + str(size_data))
+        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        log.debug("\n\n\n\n\n")
+
+        return agreement_response
+        # resource = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['resourceId'])
+        # package = broker_client._to_ckan_package(resource)
+
+        # create_external_package(package)
 
         # in case of success create the resource on local and add the agreement and other meta on extra
     except IOError as e:
         log.error(e)
         base.abort(500, e)
 
+
 def create_external_package(data):
     # get clean data from the form, data will hold the common meta for all resources
 
     # iterate through all resources and add them on the package
-    #for resource in resources:
+    # for resource in resources:
     #    toolkit.get_action('resource_create')(None, resource)
+
     c = plugins.toolkit.g
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
+
     try:
         toolkit.get_action("package_create")(context, data)
     # unlikely to happen, but just to demonstrate error handling
@@ -477,42 +529,6 @@ def create_external_package(data):
     # redirect tp dataset read page
     return toolkit.redirect_to('dataset.read',
                                id=id)
-
-
-@ids_actions.route('/ids/processExternal', methods=[
-    'GET'])
-def contracts_remote(id, offering_info=None, errors=None):
-    """
-    External resources should have as URL this endpoint
-    """
-
-    c = plugins.toolkit.g
-    context = {'model': model, 'session': model.Session,
-               'user': c.user or c.author, 'auth_user_obj': c.userobj,
-               }
-
-    # Ger from broker info for this ID
-    resource_uri = request.args.get("uri")
-    local_connector = Connector()
-
-    graphs = local_connector.ask_broker_for_description(
-        element_uri=resource_uri)
-
-    dataset = graphs_to_ckan_result_format(graphs)
-
-    c.pkg_dict = dataset
-    contract = json.loads(next((sub
-                                for sub in dataset["extras"]
-                                if sub['key'] == 'contract_meta'), None)[
-                              "value"])
-
-    c.contracts = [contract]
-
-    return toolkit.render('package/contracts_external.html',
-                          extra_vars={
-                              u'pkg_dict': dataset
-                          })
-
 
 
 def create_or_get_catalog_id():
@@ -542,3 +558,42 @@ def merge_extras(old, new):
         temp[elem['key']] = (elem['value'])
     merged = [{"key": key, "value": value} for key, value in temp.items()]
     return merged
+
+
+@ids_actions.route('/ids/processExternal', methods=[
+    'GET'])
+def contracts_remote():
+    """
+    External resources should have as URL this endpoint
+    """
+
+    c = plugins.toolkit.g
+    context = {'model': model, 'session': model.Session,
+               'user': c.user or c.author, 'auth_user_obj': c.userobj,
+               }
+
+    # Ger from broker info for this ID
+    resource_uri = request.args.get("uri")
+    local_connector = Connector()
+
+    graphs = local_connector.ask_broker_for_description(
+        element_uri=resource_uri)
+
+
+    #  This is failing
+    dataset = graphs_to_ckan_result_format(graphs)
+
+    c.pkg_dict = dataset
+    contracts = graphs_to_contracts(graphs)
+
+    c.contracts = contracts
+
+    # This should render:
+    #  Metadata of resource
+    #     Contract 1
+    #     Contract 2
+
+    return toolkit.render('package/contracts_external.html',
+                          extra_vars={
+                              u'pkg_dict': dataset
+                          })

@@ -152,11 +152,18 @@ def get_resource_type(type):
     else:
         raise ValueError("Uknown dataset type: " + type + " Mapping failed.")
 
+
 def graphs_to_contracts(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
     contract_graphs = [x for x in g if x["@type"] == "ids:ContractOffer"]
     resource_graphs = [x for x in g if x["@type"] == "ids:Resource"]
     permission_graphs = [x for x in g if x["@type"] == "ids:Permission"]
+    artifact_graphs = [x for x in g if x["@type"] == "ids:Artifact"]
+
+    resource_uri = resource_graphs[0]["sameAs"]
+    theirname = resource_uri
+    organization_name = theirname.split("/")[2].split(":")[0]
+    providing_base_url = "/".join(organization_name.split("/")[:3])
 
     permission_graph_dict = {x["@id"]:x for x in permission_graphs}
     results = []
@@ -167,7 +174,14 @@ def graphs_to_contracts(raw_jsonld: Dict):
         r["contract_end"] = cg["contractEnd"]
         r["title"] = resource_graphs[0]["title"]
         r["errors"] = {}
-        r["policies"] = [{"type": perm_graph["description"]}]
+        r["policies"] = [{"type": perm_graph["description"].upper().replace("-","_")}]
+        r["resourceId"] = resource_uri
+        r["provider_url"] = providing_base_url
+        r["artifactId"] = artifact_graphs[0]["@id"]
+        r["contradId"] = cg["@id"]
+        results.append(r)
+
+    return results
 
 
 
