@@ -1,0 +1,11 @@
+{% ckan_extends %}
+
+{% block heading_title %}
+  {% if 'external_provider_name' in package  %}
+    {{  package.external_provider_name  }} :
+    {{  h.link_to(h.truncate(title, truncate_title),
+package.to_process_external)  }}
+  {% else %}
+{{ h.link_to(h.truncate(title, truncate_title), h.url_for('%s.read' % package.type, id=package.name)) }}
+  {% endif %}
+{% endblock %}

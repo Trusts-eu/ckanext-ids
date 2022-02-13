@@ -1,18 +1,26 @@
+import datetime
 import json
+import logging
 from collections import defaultdict
 
-from flask import Blueprint, jsonify, make_response, request
-import ckan.plugins.toolkit as toolkit
-import ckan.logic as logic
-from ckan.common import _, config
-import ckan.lib.navl.dictization_functions as dict_fns
-import ckan.lib.helpers as h
 import ckan.lib.base as base
-import ckan.plugins as plugins
+import ckan.lib.helpers as h
+import ckan.lib.navl.dictization_functions as dict_fns
+import ckan.logic as logic
 import ckan.model as model
+import ckan.plugins as plugins
+import ckan.plugins.toolkit as toolkit
+import requests
+from ckan.common import _, config
+from dateutil import tz
+from flask import Blueprint, request
+from werkzeug.datastructures import ImmutableMultiDict
+
 from ckanext.ids.dataspaceconnector.connector import Connector
+from ckanext.ids.dataspaceconnector.contract import Contract
 from ckanext.ids.dataspaceconnector.offer import Offer
 from ckanext.ids.dataspaceconnector.resource import Resource
+<<<<<<< HEAD
 from ckanext.ids.dataspaceconnector.contract import Contract
 from ckanext.ids.model import IdsResource, IdsAgreement
 import ckanext.ids.metadatabroker.client as broker_client
@@ -22,6 +30,9 @@ import datetime
 import logging
 
 from werkzeug.datastructures import ImmutableMultiDict
+=======
+from ckanext.ids.metadatabroker.client import graphs_to_ckan_result_format
+>>>>>>> intermediate work on fetching info of remote assets
 
 tuplize_dict = logic.tuplize_dict
 clean_dict = logic.clean_dict
@@ -42,13 +53,15 @@ log = logging.getLogger(__name__)
 
 
 def request_contains_mandatory_files():
-    return request.files['Deployment file (docker-compose.xml) - mandatory-upload'].filename != ''
+    return request.files[
+               'Deployment file (docker-compose.xml) - mandatory-upload'].filename != ''
 
 
 @ids.route('/dataset/<id>/resources/create', methods=['POST'])
 def create(id):
     # get clean data from the form, data will hold the common meta for all resources
-    data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
+    data = clean_dict(
+        dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
     data['package_id'] = id
     to_delete = ['clear_upload', 'save']
 
@@ -75,7 +88,7 @@ def create(id):
         resource['name'] = resource[file].filename
         resource['url'] = resource[file].filename
         # get the name of the file to add it as resource_type
-        resource['resource_type'] = resource[file].name.split("-upload",1)[0]
+        resource['resource_type'] = resource[file].name.split("-upload", 1)[0]
         del resource[file]
         # add the final resource on the table
         resources.append(resource)
@@ -93,13 +106,13 @@ def create(id):
         }
     }
     try:
-        toolkit.get_action("package_revise")(None, revise_package_dict )
+        toolkit.get_action("package_revise")(None, revise_package_dict)
     # unlikely to happen, but just to demonstrate error handling
     except (ValidationError):
         return base.abort(404, _(u'Dataset not found'))
     # redirect tp dataset read page
     return toolkit.redirect_to('dataset.read',
-                        id=id)
+                               id=id)
 
 
 @ids.route('/dataset/<id>/resources/delete', methods=['DELETE'])
@@ -112,7 +125,7 @@ def push_package_task(dataset_dict):
 
 
 def push_organization_task(organization_dict):
-    action= 'organization_create'
+    action = 'organization_create'
     push_to_central(data=organization_dict, action=action)
 
 
@@ -122,7 +135,7 @@ def push_to_central(data, action):
     url = node_url + action
     # we need to check if the organization exists
     response = requests.post(url, json=data)
-    #handle error
+    # handle error
     assert response.status_code == 200
 
 
@@ -147,7 +160,8 @@ def push_to_dataspace_connector(data):
     # local dataspace connector, we just create a new IRI for it
     # FIXME: check to merge with code below
     if offer.offer_iri is not None and not \
-            local_resource_dataspace_connector.resource_exists(offer.offer_iri):
+            local_resource_dataspace_connector.resource_exists(
+                offer.offer_iri):
         offer.offer_iri = None
         for value in data["resources"]:
             rep_iri = value["representation"]
@@ -158,7 +172,8 @@ def push_to_dataspace_connector(data):
                 value["artifact"] = None
 
     if offer.offer_iri is not None:
-        if local_resource_dataspace_connector.update_offered_resource(offer.offer_iri, offer.to_dictionary()):
+        if local_resource_dataspace_connector.update_offered_resource(
+                offer.offer_iri, offer.to_dictionary()):
             offers = offer.offer_iri
         else:
             # The offer does not exist on the dataspace connector. This might mean that the offer was manually deleted or
@@ -168,37 +183,47 @@ def push_to_dataspace_connector(data):
             log.error("Offer not found on the Dataspace Connector.")
             return False
     else:
-        offers = local_resource_dataspace_connector.create_offered_resource(offer.to_dictionary())
-        local_resource_dataspace_connector.add_resource_to_catalog(catalog, offers)
+        offers = local_resource_dataspace_connector.create_offered_resource(
+            offer.to_dictionary())
+        local_resource_dataspace_connector.add_resource_to_catalog(catalog,
+                                                                   offers)
     # adding resources
     for value in data["resources"]:
         # this has also to run for every resource
         resource = Resource(value)
         if resource.representation_iri is None:
             representation = local_resource_dataspace_connector.create_representation()
-            local_resource_dataspace_connector.add_representation_to_resource(offers, representation)
+            local_resource_dataspace_connector.add_representation_to_resource(
+                offers, representation)
         else:
             local_resource_dataspace_connector.update_representation(resource)
             representation = resource.representation_iri
 
         if resource.artifact_iri is None:
-            artifact = local_resource_dataspace_connector.create_artifact(data={"accessUrl": value["url"]})
-            local_resource_dataspace_connector.add_artifact_to_representation(representation, artifact)
+            artifact = local_resource_dataspace_connector.create_artifact(
+                data={"accessUrl": value["url"]})
+            local_resource_dataspace_connector.add_artifact_to_representation(
+                representation, artifact)
         else:
-            local_resource_dataspace_connector.update_artifact(resource.artifact_iri, data={"accessUrl": value["url"]})
+            local_resource_dataspace_connector.update_artifact(
+                resource.artifact_iri, data={"accessUrl": value["url"]})
             artifact = resource.artifact_iri
 
         # add these on the resource meta
-        patch_data = {"id": value["id"], "representation": representation, "artifact": artifact}
+        patch_data = {"id": value["id"], "representation": representation,
+                      "artifact": artifact}
         logic.action.patch.resource_patch(context, data_dict=patch_data)
-    changed_extras = [{"key": "catalog", "value": catalog}, {"key": "offers", "value": offers}]
+    changed_extras = [{"key": "catalog", "value": catalog},
+                      {"key": "offers", "value": offers}]
     extras = merge_extras(data.get("extras", []), changed_extras)
 
-    toolkit.get_action("package_patch")(context, {"id": data["id"], "extras": extras})
+    toolkit.get_action("package_patch")(context,
+                                        {"id": data["id"], "extras": extras})
     if any(dictionary.get('key', '') == 'contract' for dictionary in extras):
         # push to the broker if the package has a contract
         local_connector.send_resource_to_broker(resource_uri=offer.offer_iri)
     return True
+
 
 def delete_from_dataspace_connector(data):
     c = plugins.toolkit.g
@@ -214,9 +239,10 @@ def delete_from_dataspace_connector(data):
         if resource.representation_iri is not None:
             local_resource_dataspace_connector.delete_representation(resource)
         if resource.artifact_iri is not None:
-            local_resource_dataspace_connector.delete_artifact(resource.artifact_iri, data={})
+            local_resource_dataspace_connector.delete_artifact(
+                resource.artifact_iri, data={})
     if offer.offer_iri is not None:
-            local_resource_dataspace_connector.delete_offered_resource(offer)
+        local_resource_dataspace_connector.delete_offered_resource(offer)
     return
 
 
@@ -226,8 +252,10 @@ def transform_url(url):
     log.debug("ckan.site_url is set to: %s", site_url)
     log.debug(url)
     # splitting the url based on the ckan.site_url setting
-    resource_url_part = url.split(site_url,1) [1]
-    transformed_url = toolkit.config.get('ckanext.ids.central_node_connector_url') + toolkit.config.get('ckanext.ids.local_node_name') + "/ckan/5000" + resource_url_part
+    resource_url_part = url.split(site_url, 1)[1]
+    transformed_url = toolkit.config.get(
+        'ckanext.ids.central_node_connector_url') + toolkit.config.get(
+        'ckanext.ids.local_node_name') + "/ckan/5000" + resource_url_part
     log.info("URL is now: %s", transformed_url)
     return transformed_url
 
@@ -252,14 +280,16 @@ def push_package_view(id):
     if response:
         h.flash_success(_('Object pushed to the DataspaceConnector Catalog.'))
     else:
-        h.flash_error(_('Offer not found on the Dataspace Connector. Perhaps it was deleted manually on'
-                           ' the Dataspace Connector. Contact your adinistrator'))
+        h.flash_error(
+            _('Offer not found on the Dataspace Connector. Perhaps it was deleted manually on'
+              ' the Dataspace Connector. Contact your adinistrator'))
     return toolkit.redirect_to('dataset.read', id=id)
 
 
 @ids_actions.route('/ids/actions/push_organization/<id>', methods=['GET'])
 def push_organization(id):
-    organization_meta = toolkit.get_action("organization_show")(None, {"id":id})
+    organization_meta = toolkit.get_action("organization_show")(None,
+                                                                {"id": id})
     response = toolkit.enqueue_job(push_organization_task, [organization_meta])
     push_organization_task(organization_meta)
     return json.dumps(response.id)
@@ -269,8 +299,10 @@ def push_organization(id):
 @ids_actions.route('/ids/view/push_organization/<id>', methods=['GET'])
 def push_organization_view(id):
     response = push_organization(id)
-    h.flash_success( _('Object pushed successfully to Central node, jobId: ') + response)
+    h.flash_success(
+        _('Object pushed successfully to Central node, jobId: ') + response)
     return toolkit.redirect_to('organization.read', id=id)
+
 
 @ids_actions.route('/ids/actions/publish/<id>', methods=['POST'])
 def publish_action(id):
@@ -285,8 +317,8 @@ def publish_action(id):
     # If they are trying to create a contract for a package not yet in the DSC
     # this action will push the package. But if the package already exists
     # nothing new will be pushed
-#    push_to_dataspace_connector(dataset)
-#    dataset = toolkit.get_action('package_show')(context, {'id': id})
+    #    push_to_dataspace_connector(dataset)
+    #    dataset = toolkit.get_action('package_show')(context, {'id': id})
 
     c.pkg_dict = dataset
     contract_meta = request.data
@@ -305,29 +337,31 @@ def publish_action(id):
         rule_id = local_connector_resource_api.create_rule({"value": rule})
         rules.append(rule_id)
     # add rules to contract
-    local_connector_resource_api.add_rule_to_contract(contract=contract_id, rule=rules)
-    resource_id = next((sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)["value"]
-    local_connector_resource_api.add_contract_to_resource(resource=resource_id, contract=contract_id)
+    local_connector_resource_api.add_rule_to_contract(contract=contract_id,
+                                                      rule=rules)
+    resource_id = \
+    next((sub for sub in dataset["extras"] if sub['key'] == 'offers'), None)[
+        "value"]
+    local_connector_resource_api.add_contract_to_resource(resource=resource_id,
+                                                          contract=contract_id)
     extras = dataset["extras"]
     # If this already had a contract, we overwrite it
     # Otherwise we get a duplicate-error from the package_patch action below
     contract_found = False
     for d in extras:
-        if d["key"]=="contract":
-            d["value"]=contract_id
+        if d["key"] == "contract":
+            d["value"] = contract_id
             contract_found = True
-        if d["key"]=="contract_meta":
-            d["value"]=contract_meta.toJSON()
+        if d["key"] == "contract_meta":
+            d["value"] = contract_meta.toJSON()
     if not contract_found:
-        extras.append({"key":  "contract", "value": contract_id})
-        extras.append({"key": "contract_meta", "value": contract_meta.toJSON()})
+        extras.append({"key": "contract", "value": contract_id})
+        extras.append(
+            {"key": "contract_meta", "value": contract_meta.toJSON()})
 
-    updated_package = toolkit.get_action("package_patch")(context, {"id": id, "extras": extras})
+    updated_package = toolkit.get_action("package_patch")(context, {"id": id,
+                                                                    "extras": extras})
     local_connector.send_resource_to_broker(resource_uri=resource_id)
-
-
-
-
 
 
 @ids_actions.route('/ids/view/publish/<id>', methods=['GET', 'POST'])
@@ -341,7 +375,8 @@ def publish(id, offering_info=None, errors=None):
     c.usage_policies = config.get("ckanext.ids.usage_control_policies")
     c.offering = {}
     c.errors = {}
-    c.current_date_time = datetime.datetime.now(tz=tz.tzlocal()).replace(microsecond=0)
+    c.current_date_time = datetime.datetime.now(tz=tz.tzlocal()).replace(
+        microsecond=0)
     if request.method == "POST":
         try:
             contract = Contract(request.form)
@@ -358,6 +393,7 @@ def publish(id, offering_info=None, errors=None):
                               u'pkg_dict': dataset
                           })
 
+
 @ids_actions.route('/ids/view/contracts/<id>', methods=['GET'])
 def contracts(id, offering_info=None, errors=None):
     c = plugins.toolkit.g
@@ -366,7 +402,15 @@ def contracts(id, offering_info=None, errors=None):
                }
     dataset = toolkit.get_action('package_show')(context, {'id': id})
     c.pkg_dict = dataset
-    contract = json.loads(next((sub for sub in dataset["extras"] if sub['key'] == 'contract_meta'), None)["value"])
+    contract = json.loads(next(
+        (sub for sub in dataset["extras"] if sub['key'] == 'contract_meta'),
+        None)["value"])
+
+    log.debug("\n\n|===================================================>")
+    log.debug(json.dumps(contract, indent=1))
+    log.debug(str(dataset))
+    log.debug("\n<===================================================|\n")
+    log.debug("||||||||||||||||||||||||||||||||||||||||||||||||||||||\n\n")
 
     c.contracts = [contract]
     return toolkit.render('package/contracts.html',
@@ -374,6 +418,7 @@ def contracts(id, offering_info=None, errors=None):
                               u'pkg_dict': dataset
                           })
 
+<<<<<<< HEAD
 # endpoint to accept a contract offer
 @ids_actions.route('/ids/actions/contract_accept', methods=['POST'])
 def contract_accept():
@@ -420,7 +465,6 @@ def create_external_package(data):
     # iterate through all resources and add them on the package
     #for resource in resources:
     #    toolkit.get_action('resource_create')(None, resource)
-
     c = plugins.toolkit.g
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
@@ -433,6 +477,43 @@ def create_external_package(data):
     # redirect tp dataset read page
     return toolkit.redirect_to('dataset.read',
                                id=id)
+
+
+@ids_actions.route('/ids/processExternal', methods=[
+    'GET'])
+def contracts_remote(id, offering_info=None, errors=None):
+    """
+    External resources should have as URL this endpoint
+    """
+
+    c = plugins.toolkit.g
+    context = {'model': model, 'session': model.Session,
+               'user': c.user or c.author, 'auth_user_obj': c.userobj,
+               }
+
+    # Ger from broker info for this ID
+    resource_uri = request.args.get("uri")
+    local_connector = Connector()
+
+    graphs = local_connector.ask_broker_for_description(
+        element_uri=resource_uri)
+
+    dataset = graphs_to_ckan_result_format(graphs)
+
+    c.pkg_dict = dataset
+    contract = json.loads(next((sub
+                                for sub in dataset["extras"]
+                                if sub['key'] == 'contract_meta'), None)[
+                              "value"])
+
+    c.contracts = [contract]
+
+    return toolkit.render('package/contracts_external.html',
+                          extra_vars={
+                              u'pkg_dict': dataset
+                          })
+
+
 
 def create_or_get_catalog_id():
     local_connector_resource_api = Connector().get_resource_api()
@@ -450,6 +531,7 @@ def create_or_get_catalog_id():
         catalog_iri = local_connector_resource_api.create_catalog(catalog)
     config.store.update({"ckanext.ids.connector_catalog_iri": catalog_iri})
 
+
 def merge_extras(old, new):
     # Using defaultdict
     temp = defaultdict(dict)
@@ -458,5 +540,5 @@ def merge_extras(old, new):
         temp[elem['key']] = (elem['value'])
     for elem in new:
         temp[elem['key']] = (elem['value'])
-    merged = [{"key":key, "value":value} for key, value in temp.items()]
+    merged = [{"key": key, "value": value} for key, value in temp.items()]
     return merged
