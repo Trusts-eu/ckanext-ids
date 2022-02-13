@@ -1,4 +1,8 @@
+
 import hashlib
+
+from copy import deepcopy
+
 import logging
 
 import logging
@@ -154,6 +158,7 @@ def get_resource_type(type):
     else:
         raise ValueError("Uknown dataset type: " + type + " Mapping failed.")
 
+import json
 
 def graphs_to_contracts(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
@@ -180,9 +185,18 @@ def graphs_to_contracts(raw_jsonld: Dict):
         r["policies"] = [{"type": perm_graph["description"].upper().replace("-","_")}]
         r["provider_url"] = providing_base_url
         ## FIXME: hack to replace the urls, now hardocoded, perhaps we should a property in resource??? This will also fix the issue with provider_url
-        r["resourceId"] = rewrite_urls("provider-core:8080", resource_uri)
-        r["artifactId"] = rewrite_urls("provider-core:8080", artifact_graphs[0]["sameAs"])
-        r["contractId"] = rewrite_urls("provider-core:8080", cg["sameAs"])
+        #r["resourceId"] = rewrite_urls("provider-core:8080", resource_uri)
+        #r["artifactId"] = rewrite_urls("provider-core:8080",
+        # artifact_graphs[0]["sameAs"])
+        #r["contractId"] = rewrite_urls("provider-core:8080", cg["sameAs"])
+        r["resourceId"] = resource_uri
+        r["artifactId"] = artifact_graphs[0]["sameAs"]
+        r["contractId"] = cg["sameAs"]
+
+
+        log.debug("\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        log.debug(json.dumps(r, indent=2))
+
         results.append(r)
 
     return results
@@ -221,7 +235,7 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
     }
     resources = []
 
-    packagemeta = empty_result
+    packagemeta = deepcopy(empty_result)
     packagemeta["id"] = resource_uri
     packagemeta["license_id"] = resource_graphs[0]["standardLicense"]
     packagemeta["license_url"] = resource_graphs[0]["standardLicense"]
@@ -354,8 +368,7 @@ def broker_package_search(q=None, start_offset=0, fq=None):
         log.debug(k)
         pm = graphs_to_ckan_result_format(v)
         log.debug(pm)
-        log.debug(
-            "------------------------------------------------------------------")
+        log.debug("-------------------------------")
         if pm is not None:
             search_results.append(pm)
 

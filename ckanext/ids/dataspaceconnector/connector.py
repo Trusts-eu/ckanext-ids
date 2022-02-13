@@ -59,7 +59,7 @@ class Connector:
         dt = tnow - self.broker_knows_us_timestamp()
         if dt.total_seconds() > self.broker_knows_us_limit:
             return False
-
+        log.debug("\n________ BROKER STILLS KNOWS US _______________")
         return True
 
     def get_resource_api(self):
@@ -182,7 +182,8 @@ class Connector:
 
         # If there are no records for this connector, it doesn't harm to
         # announce ourselves again
-        if r.status_code < 200:
+        numlines = -1
+        if r.status_code < 299:
             numlines = len([x for x in r.text.split("\n")])
             if numlines == 1:  # It should contain at least the header line
                 need_to_announce = True
@@ -196,6 +197,10 @@ class Connector:
                                                         self.auth[1]))
             if response.status_code < 299:
                 self.broker_knows_us_timestamp = datetime.datetime.now()
+        else:
+            log.debug("\n________ NO NEED TO ANNOUNCE US _______________")
+            log.debug(str(r.status_code)+"  with lines: "+str(numlines))
+            log.debug("\n_______________________________________________\n")
 
         return True
 
@@ -208,5 +213,9 @@ class Connector:
                                  params=params,
                                  auth=HTTPBasicAuth(self.auth[0],
                                                     self.auth[1]))
-
+        log.debug("------ \n\n REQUEST TO ADD TO BROKER "+url+" :")
+        log.debug(json.dumps(params, indent=1))
+        log.debug("------ RESPONSE OF SEND RESOURCE TO BROKER IS :  ")
+        log.debug(response.text)
+        log.debug("\n\n\n\n\n\n\n ---------------------------------------\n")
         return response.status_code < 299

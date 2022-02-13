@@ -71,9 +71,17 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         results_from_broker = broker_package_search(q=search_query,
                                                     fq=fq,
                                                     start_offset=start)
+        log.debug(".\n\n\n---BROKER SEARCH RESULTS ARE   ")
+        log.debug(json.dumps([x["name"] for x in  results_from_broker],
+                             indent=1))
+        log.debug(".\n\n---------------------------:)\n\n ")
+
 
         search_results["results"] = results_from_broker + search_results["results"]
         search_results["count"] += len(results_from_broker)
+
+
+
         return search_results
 
     def before_view(self, pkg_dict):
