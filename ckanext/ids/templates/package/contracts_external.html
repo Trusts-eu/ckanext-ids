@@ -1,12 +1,16 @@
-{% extends "package/edit_base.html" %}
+{% extends "package/read.html" %}
+
 
 {% block title %}Available contracts for this remote {{ dataset_type }} - {{
 super() }}{% endblock %}
 
+{% block content_action %}
+{% endblock %}
+
+{% block content_primary_nav %}
+{% endblock %}
+
 {% block secondary_content %}
-
-    {{ super() }}
-
     <section class="module module-narrow module-shallow">
         <h2 class="module-heading"><i
                 class="icon-info-sign fa fa-info-circle"></i>{% trans %}This
@@ -23,31 +27,10 @@ super() }}{% endblock %}
 
 
 {% block primary_content_inner %}
+    {{ super() }}
    <section id="dataset-contracts" class="contracts">
-    <h2>{{ _('Contracts') }}</h2>
     {% block contract_list %}
-        {% if contracts %}
-            <ul class="{% block contract_list_class %}resource-list{% endblock %}">
-                {% block contract_list_inner %}
-                    {% set can_edit = h.check_access('package_update', {'id':data.id }) and not is_activity_archive %}
-                    {% for contract in contracts %}
-                <p><b>resourceId:</b>  {{  contract.resourceId }}</p>
-                <p><b>provider_url:</b>  {{ contract.provider_url }}</p>
-                <p><b>artifactId:</b> {{  contract.artifactId }}</p>
-                <p><b>contradId:</b>  {{  contract.contradId }}</p>
-                        {% snippet 'package/snippets/contract_item.html', pkg=data, contract=contract, can_edit=can_edit, is_activity_archive=is_activity_archive %}
-                    {% endfor %}
-                {% endblock %}
-            </ul>
-        {% else %}
-            {% if h.check_access('resource_create', {'package_id': data['id']}) and not is_activity_archive %}
-                {% trans url=h.url_for(data.type ~ '_resource.new', id=data.name) %}
-                    <p class="empty">This item has no contracts, <a href="{{ url }}">why not create some?</a></p>
-                {% endtrans %}
-            {% else %}
-                <p class="empty">{{ _('This item has no contracts.') }}</p>
-            {% endif %}
-        {% endif %}
+        {% snippet "package/snippets/contracts_list.html", data=g.pkg_dict, contracts=g.contracts %}
     {% endblock %}
 </section>
 {% endblock %}

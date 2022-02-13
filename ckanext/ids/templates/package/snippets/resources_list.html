@@ -11,9 +11,11 @@ Example:
 
 #}
 <section id="dataset-resources" class="resources">
-    {% if h.check_access('resource_create', {'package_id': pkg['id']}) and not is_activity_archive %}
-        {% link_for _('Push to TRUSTS platform'),
-    named_route='ids_actions.push_package_view', id=pkg['id'], class_='btn btn-success', icon='layer-forward' %}
+    {% if not 'external_provider_name' in pkg %}
+        {% if h.check_access('resource_create', {'package_id': pkg['id']}) and not is_activity_archive %}
+            {% link_for _('Push to TRUSTS platform'),
+        named_route='ids_actions.push_package_view', id=pkg['id'], class_='btn btn-success', icon='layer-forward' %}
+        {% endif %}
     {% endif %}
     <h2>{{ _('Data and Resources') }}</h2>
     {% block resource_list %}

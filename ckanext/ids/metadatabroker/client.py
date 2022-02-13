@@ -12,6 +12,8 @@ import ckan.logic as logic
 import rdflib
 from ckan.common import config
 
+from urllib.parse import urlparse
+
 from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.metadatabroker.translations_broker_ckan import URI, \
     empty_result
@@ -163,6 +165,7 @@ def graphs_to_contracts(raw_jsonld: Dict):
     resource_uri = resource_graphs[0]["sameAs"]
     theirname = resource_uri
     organization_name = theirname.split("/")[2].split(":")[0]
+    # FIXME: Is this correct ?
     providing_base_url = "/".join(organization_name.split("/")[:3])
 
     permission_graph_dict = {x["@id"]:x for x in permission_graphs}
@@ -175,15 +178,18 @@ def graphs_to_contracts(raw_jsonld: Dict):
         r["title"] = resource_graphs[0]["title"]
         r["errors"] = {}
         r["policies"] = [{"type": perm_graph["description"].upper().replace("-","_")}]
-        r["resourceId"] = resource_uri
         r["provider_url"] = providing_base_url
-        r["artifactId"] = artifact_graphs[0]["@id"]
-        r["contradId"] = cg["@id"]
+        ## FIXME: hack to replace the urls, now hardocoded, perhaps we should a property in resource??? This will also fix the issue with provider_url
+        r["resourceId"] = rewrite_urls("provider-core:8080", resource_uri)
+        r["artifactId"] = rewrite_urls("provider-core:8080", artifact_graphs[0]["sameAs"])
+        r["contractId"] = rewrite_urls("provider-core:8080", cg["sameAs"])
         results.append(r)
 
     return results
 
-
+def rewrite_urls(provider_base, input_url):
+    a = urlparse(input_url)
+    return a._replace(netloc=provider_base).geturl()
 
 
 def graphs_to_ckan_result_format(raw_jsonld: Dict):
