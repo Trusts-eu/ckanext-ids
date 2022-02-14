@@ -11,6 +11,7 @@ from ckan.lib.plugins import DefaultTranslation
 import ckanext.ids.blueprints as blueprints
 from ckanext.ids.metadatabroker.client import broker_package_search
 
+# ToDo make sure this logger is set higher
 log = logging.getLogger("ckanext")
 
 
