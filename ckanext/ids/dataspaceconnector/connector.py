@@ -44,6 +44,7 @@ class Connector:
                 'ckanext.ids.trusts_local_dataspace_connector_username'),
             config.get(
                 'ckanext.ids.trusts_local_dataspace_connector_password'))
+        # ToDo Make sure this config is working
         self.broker_url = config.get('ckanext.ids.trusts_central_broker',
                                      'http://central-core:8282/infrastructure')
         self.broker_url = 'http://central-core:8080/infrastructure'

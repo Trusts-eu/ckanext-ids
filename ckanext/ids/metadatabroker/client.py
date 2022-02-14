@@ -170,8 +170,7 @@ def graphs_to_contracts(raw_jsonld: Dict):
     resource_uri = resource_graphs[0]["sameAs"]
     theirname = resource_uri
     organization_name = theirname.split("/")[2].split(":")[0]
-    # FIXME: Is this correct ?
-    providing_base_url = "/".join(organization_name.split("/")[:3])
+    providing_base_url = "/".join(resource_uri.split("/")[:3])
 
     permission_graph_dict = {x["@id"]:x for x in permission_graphs}
     results = []
@@ -184,11 +183,6 @@ def graphs_to_contracts(raw_jsonld: Dict):
         r["errors"] = {}
         r["policies"] = [{"type": perm_graph["description"].upper().replace("-","_")}]
         r["provider_url"] = providing_base_url
-        ## FIXME: hack to replace the urls, now hardocoded, perhaps we should a property in resource??? This will also fix the issue with provider_url
-        #r["resourceId"] = rewrite_urls("provider-core:8080", resource_uri)
-        #r["artifactId"] = rewrite_urls("provider-core:8080",
-        # artifact_graphs[0]["sameAs"])
-        #r["contractId"] = rewrite_urls("provider-core:8080", cg["sameAs"])
         r["resourceId"] = resource_uri
         r["artifactId"] = artifact_graphs[0]["sameAs"]
         r["contractId"] = cg["sameAs"]
@@ -267,7 +261,7 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
     packagemeta["state"] = "active"
     packagemeta["relationships_as_object"] = []
     packagemeta["relationships_as_subject"] = []
-    packagemeta["url"] = "http://my.url"
+    packagemeta["url"] = providing_base_url
     packagemeta["tags"] = []  # (/)
     packagemeta["groups"] = []  # (/)
 
