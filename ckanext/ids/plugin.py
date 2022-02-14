@@ -11,6 +11,7 @@ from ckan.lib.plugins import DefaultTranslation
 import ckanext.ids.blueprints as blueprints
 from ckanext.ids.metadatabroker.client import broker_package_search
 
+# ToDo make sure this logger is set higher
 log = logging.getLogger("ckanext")
 
 
@@ -19,6 +20,10 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IOrganizationController, inherit=True)
     plugins.implements(plugins.ITranslation)
+
+    from ckanext.ids.model import setup as db_setup
+
+    db_setup()
 
     # IConfigurer
     def update_config(self, config_):
@@ -44,11 +49,10 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 
     def after_search(self, search_results, search_params):
         log.debug("\n................ After Search ................\n+")
-        import json
-        #log.debug("\n\nParams------------------------------------------>")
-        #log.debug(json.dumps(search_params, indent=2))
-        #log.debug("\n\nResults----------------------------------------->")
-        #log.debug(json.dumps(search_results, indent=2))
+        # log.debug("\n\nParams------------------------------------------>")
+        # log.debug(json.dumps(search_params, indent=2))
+        # log.debug("\n\nResults----------------------------------------->")
+        # log.debug(json.dumps(search_results, indent=2))
 
         start = search_params.get("start", 0)
         search_query = search_params.get("q", None)
@@ -56,25 +60,29 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         # The parameters include organizations, we remove this
         fqset = search_params.get("fq", None)
         if fqset is not None:
-            fq2=[]
+            fq2 = []
             for f in fqset:
                 fq2.append(" ".join([x for x in f.split()
                                      if "+organization" not in x]))
 
-            fqset=fq2
+            fqset = fq2
             fqset.sort()
 
         fq = tuple(fqset)
         results_from_broker = broker_package_search(q=search_query,
                                                     fq=fq,
                                                     start_offset=start)
+        log.debug(".\n\n\n---BROKER SEARCH RESULTS ARE   ")
+        log.debug(json.dumps([x["name"] for x in  results_from_broker],
+                             indent=1))
+        log.debug(".\n\n---------------------------:)\n\n ")
 
-        log.debug("search_results\n\n\n\n",
-                  str(search_results),
-                  "\n---------------------------------------\n\n\n")
 
-        search_results["results"] += results_from_broker
-        search_results["count"] +=  len(results_from_broker)
+        search_results["results"] = results_from_broker + search_results["results"]
+        search_results["count"] += len(results_from_broker)
+
+
+
         return search_results
 
     def before_view(self, pkg_dict):
@@ -83,17 +91,20 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
             'fq': '+type:application +organization:' + pkg_dict['name'],
             'include_private': True
         }
-        application_search = toolkit.get_action("package_search")(None, data_application)
+        application_search = toolkit.get_action("package_search")(None,
+                                                                  data_application)
         data_service = {
             'fq': '+type:service +organization:' + pkg_dict['name'],
             'include_private': True
         }
-        service_search = toolkit.get_action("package_search")(None, data_service)
+        service_search = toolkit.get_action("package_search")(None,
+                                                              data_service)
         data_dataset = {
             'fq': '+type:dataset +organization:' + pkg_dict['name'],
             'include_private': True
         }
-        dataset_search = toolkit.get_action("package_search")(None, data_dataset)
+        dataset_search = toolkit.get_action("package_search")(None,
+                                                              data_dataset)
         pkg_dict['application_count'] = application_search['count']
         pkg_dict['service_count'] = service_search['count']
         pkg_dict['dataset_count'] = dataset_search['count']

@@ -1,0 +1,37 @@
+{% extends "package/read.html" %}
+
+
+{% block title %}Available contracts for this remote {{ dataset_type }} - {{
+super() }}{% endblock %}
+
+{% block content_action %}
+{% endblock %}
+
+{% block content_primary_nav %}
+{% endblock %}
+
+{% block secondary_content %}
+    <section class="module module-narrow module-shallow">
+        <h2 class="module-heading"><i
+                class="icon-info-sign fa fa-info-circle"></i>{% trans %}This
+            is a list of the available contracts for this external resource.{%
+            endtrans %}</h2>
+        <div class="module-content">
+            <p>
+                See the contracts for this resource
+            </p>
+        </div>
+    </section>
+
+{% endblock %}
+
+
+{% block primary_content_inner %}
+    {{ super() }}
+   <section id="dataset-contracts" class="contracts">
+    {% block contract_list %}
+        {% snippet "package/snippets/contracts_list.html", data=g.pkg_dict, contracts=g.contracts %}
+    {% endblock %}
+</section>
+{% endblock %}
+

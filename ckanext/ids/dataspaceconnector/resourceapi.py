@@ -176,4 +176,41 @@ class ResourceApi:
     def get_artifacts_for_agreement(self, agreement):
         return json.loads(self.session.get(agreement + "/artifacts").text)
 
+    def descriptionRequest(self, recipient, elementId):
+        url = self.recipient + "/api/ids/description"
+        params = {}
+        if recipient is not None:
+            params["recipient"] = recipient
+        if elementId is not None:
+            params["elementId"] = elementId
+
+        response = self.session.post(url, params=params)
+        return json.loads(response.text)
+
+    def contractRequest(self, recipient, resourceId, artifactId, download, contract):
+        url = self.recipient + "/api/ids/contract"
+        params = {}
+        if recipient is not None:
+            params["recipient"] = recipient
+        if resourceId is not None:
+            params["resourceIds"] = resourceId
+        if artifactId is not None:
+            params["artifactIds"] = artifactId
+        if download is not None:
+            params["download"] = download
+
+        response = self.session.post(
+            url, params=params, json=self.toListIfNeeded(contract)
+        )
+        response_content = json.loads(response.text)
+        if response.status_code > 299:
+            raise IOError(response_content)
+        return response_content
+
+    def toListIfNeeded(self, obj):
+        if isinstance(obj, list):
+            return obj
+        else:
+            return [obj]
+
 
