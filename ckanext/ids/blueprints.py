@@ -447,6 +447,9 @@ def contract_accept():
     """
     data = clean_dict(
         dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
+    if data["provider_url"] is None or len(data["provider_url"]) < 1:
+        providing_base_url = "/".join(data["resourceId"].split("/")[:3])
+        data["provider_url"] = providing_base_url
     log.debug("data to contract_accept------\n"+json.dumps(data,indent=2))
     local_connector = Connector()
     local_connector_resource_api = local_connector.get_resource_api()
