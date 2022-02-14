@@ -37,7 +37,8 @@ class Connector:
         port = config.get('ckanext.ids.trusts_local_dataspace_connector_port',
                           '8080')
         self.url = config.get(
-            'ckanext.ids.trusts_local_dataspace_connector_url') + ":" + str(
+            'ckanext.ids.trusts_local_dataspace_connector_url',
+            'provider-core') + ":" + str(
             port)
         self.auth = (
             config.get(
@@ -47,7 +48,7 @@ class Connector:
         # ToDo Make sure this config is working
         self.broker_url = config.get('ckanext.ids.trusts_central_broker',
                                      'http://central-core:8282/infrastructure')
-        self.broker_url = 'http://central-core:8080/infrastructure'
+        #self.broker_url = 'http://central-core:8080/infrastructure'
         self.broker_knows_us_timestamp = None
         self.broker_knows_us_limit = 10
         self.my_catalog_ids = []
