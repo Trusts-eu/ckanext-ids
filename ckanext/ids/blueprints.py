@@ -27,6 +27,7 @@ from ckanext.ids.metadatabroker.client import graphs_to_ckan_result_format
 from ckanext.ids.metadatabroker.client import _to_ckan_package
 from ckanext.ids.metadatabroker.client import graphs_to_contracts
 from ckanext.ids.model import IdsResource, IdsAgreement
+from flask import Response, stream_with_context
 
 tuplize_dict = logic.tuplize_dict
 clean_dict = logic.clean_dict
@@ -493,12 +494,12 @@ def contract_accept():
         artifacts["_embedded"]["artifacts"][0]["_links"]["self"]["href"]
         log.debug("artifact_uri :\t" + first_artifact)
 
-        data_response = local_connector_resource_api.get_data(first_artifact)
-        size_data = len(data_response.content)
-        log.debug("size_of_data :\t" + str(size_data))
-        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        log.debug("\n\n\n\n\n")
+#        data_response = local_connector_resource_api.get_data(first_artifact)
+#        size_data = len(data_response.content)
+#        log.debug("size_of_data :\t" + str(size_data))
+#        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+#        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+#        log.debug("\n\n\n\n\n")
 
         return agreement_response
         # resource = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['resourceId'])
@@ -510,6 +511,41 @@ def contract_accept():
     except IOError as e:
         log.error(e)
         base.abort(500, e)
+
+# endpoint to accept a contract offer
+@ids_actions.route('/ids/actions/get_data', methods=['GET'])
+def get_data():
+    url = request.args.get("artifact_uri")
+    local_connector = Connector()
+    local_connector_resource_api = local_connector.get_resource_api()
+    # get the data
+    # FIXME: this equivalent to the postman call. I tried even to add extra headers but it always fails with a timeout
+    # exception on the dsc. the same call works perfectly from the browser or through postman
+    # import http.client
+    # conn = http.client.HTTPConnection("provider-core", 8080)
+    # payload = ''
+    # headers = {
+    #  'Authorization': 'Basic YWRtaW46cGFzc3dvcmQ=',
+    #  'Cache-Control': 'no-cache',
+    #  'Connection': 'keep-alive',
+    #  'Host':'provider-core:8080',
+    #  'Pragma':'no-cache',
+    #  'Upgrade-Insecure-Requests': 1,
+    #  'Accept-Encoding': 'gzip, deflate',
+    #  'Accept-Language': 'en-US,en;q=0.9',
+    #  'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+    #  'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36'
+    # }
+    # conn.request("GET", "/api/artifacts/ede29152-893d-4f26-8ad2-d10088c95efa/data", payload, headers)
+    # res = conn.getresponse()
+    # data = res.read()
+    # print(data.decode("utf-8"))
+    data_response = local_connector_resource_api.get_data(url)
+    return Response(
+        stream_with_context(data_response.iter_content(chunk_size=1024)),
+        content_type=data_response.headers.get("Content-Type"),
+        status=data_response.status_code
+    )
 
 
 def create_external_package(data):
