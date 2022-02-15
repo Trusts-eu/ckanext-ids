@@ -1,21 +1,15 @@
 import logging
 import datetime
 
-from sqlalchemy import event
 from sqlalchemy import Table
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import types
-from sqlalchemy import Index
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.orm import backref, relation
-from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.orm import relation
 
-from ckan import model
 from ckan.model.meta import metadata, mapper, Session
-from ckan.model.types import make_uuid
 from ckan.model.domain_object import DomainObject
-from ckan.model.package import Package
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +39,7 @@ def setup():
         log.debug('IDS tables already exist')
         # Check if existing tables need to be updated
         inspector = Inspector.from_engine(engine)
+
 
 class IdsDomainObject(DomainObject):
     '''Convenience methods for searching objects
@@ -102,6 +97,7 @@ class IdsAgreement(IdsDomainObject):
 
     def __str__(self):
         return self.__repr__().encode('ascii', 'ignore')
+
     def __init__(self, id=None, resource=None, user=None):
         self.id = id
         self.resource_id = resource.id
