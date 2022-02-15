@@ -518,32 +518,10 @@ def contract_accept():
 # endpoint to accept a contract offer
 @ids_actions.route('/ids/actions/get_data', methods=['GET'])
 def get_data():
-    url = "http://local-core:8080/api/artifacts/"+request.args.get(
-        "artifact_id")
     local_connector = Connector()
     local_connector_resource_api = local_connector.get_resource_api()
-    # get the data
-    # FIXME: this equivalent to the postman call. I tried even to add extra headers but it always fails with a timeout
-    # exception on the dsc. the same call works perfectly from the browser or through postman
-    # import http.client
-    # conn = http.client.HTTPConnection("provider-core", 8080)
-    # payload = ''
-    # headers = {
-    #  'Authorization': 'Basic YWRtaW46cGFzc3dvcmQ=',
-    #  'Cache-Control': 'no-cache',
-    #  'Connection': 'keep-alive',
-    #  'Host':'provider-core:8080',
-    #  'Pragma':'no-cache',
-    #  'Upgrade-Insecure-Requests': 1,
-    #  'Accept-Encoding': 'gzip, deflate',
-    #  'Accept-Language': 'en-US,en;q=0.9',
-    #  'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-    #  'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36'
-    # }
-    # conn.request("GET", "/api/artifacts/ede29152-893d-4f26-8ad2-d10088c95efa/data", payload, headers)
-    # res = conn.getresponse()
-    # data = res.read()
-    # print(data.decode("utf-8"))
+    url = local_connector.url + "/api/artifacts/"+request.args.get(
+        "artifact_id")
     data_response = local_connector_resource_api.get_data(url)
     return Response(
         stream_with_context(data_response.iter_content(chunk_size=1024)),
