@@ -56,12 +56,13 @@ Example:
 
         // Define what happens on successful data submission
         XHR.addEventListener( 'load', function( event ) {
-            alert( 'Yeah! Data sent and response loaded.' );
+            console.debug( 'Contract offer was accepted and confirmed' );
+            window.location.reload()
         } );
 
         // Define what happens in case of error
         XHR.addEventListener(' error', function( event ) {
-            alert( 'Oops! Something went wrong.' );
+            console.debug( 'Oops! Something went wrong.' );
         } );
 
         // Set up our request
