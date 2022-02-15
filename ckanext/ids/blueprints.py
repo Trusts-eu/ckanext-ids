@@ -476,20 +476,23 @@ def contract_accept():
         if local_resource == None:
             local_resource = IdsResource(data['resourceId'])
             local_resource.save()
-        local_agreement = IdsAgreement(agreement_response['remoteId'], local_resource,
-                                       "admin")
+
+        local_agreement_uri = agreement_response["_links"]["self"]["href"]
+        local_agreement = IdsAgreement(id=local_agreement_uri,
+                                       resource=local_resource,
+                                       user="admin")
         local_agreement.save()
 
         log.debug("\n\n\n------- Getting Resources After Agreement "
                   "--------------\n"
                   "--------------------------------------------------------")
-        agreement_uri = agreement_response["_links"]["self"]["href"]
-        log.debug("agreement_uri :\t" + agreement_uri)
+
+        log.debug("agreement_uri :\t" + local_agreement_uri)
 
 
 
         artifacts = \
-            local_connector_resource_api.get_artifacts_for_agreement(agreement_uri)
+            local_connector_resource_api.get_artifacts_for_agreement(local_agreement_uri)
         first_artifact = \
         artifacts["_embedded"]["artifacts"][0]["_links"]["self"]["href"]
         log.debug("artifact_uri :\t" + first_artifact)
@@ -515,7 +518,8 @@ def contract_accept():
 # endpoint to accept a contract offer
 @ids_actions.route('/ids/actions/get_data', methods=['GET'])
 def get_data():
-    url = request.args.get("artifact_uri")
+    url = "http://local-core:8080/api/artifacts/"+request.args.get(
+        "artifact_id")
     local_connector = Connector()
     local_connector_resource_api = local_connector.get_resource_api()
     # get the data
@@ -627,10 +631,42 @@ def contracts_remote():
 
     c.contracts = contracts
 
-    # This should render:
-    #  Metadata of resource
-    #     Contract 1
-    #     Contract 2
+    # Here we get the local agreements, if they exist
+    resourceId = dataset["id"]
+    local_resource = IdsResource.get(resourceId)
+    local_agreements  = local_resource.get_agreements()
+
+    local_artifacts = []
+    for local_agreement in local_agreements:
+        if local_agreement is not None:
+            site_url = str(toolkit.config.get('ckan.site_url'))
+            local_connector_resource_api = local_connector.get_resource_api()
+            artifacts = local_connector_resource_api.get_artifacts_for_agreement(
+                    local_agreement.id)
+            log.debug("\n~~~~~~~~~~~")
+            log.debug("agreement_uri: \t"+local_agreement.id)
+            if "_embedded" in artifacts.keys():
+                for ar in artifacts["_embedded"]["artifacts"]:
+                    artifacturi = ar["_links"]["self"]["href"]
+
+                    artifactuuid = artifacturi.split("/")[-1]
+                    accessurl = \
+                        site_url+"/ids/actions/get_data?artifact_id=" \
+                                 ""+artifactuuid
+
+                    artifact_description = {"url" : accessurl}
+                    artifact_description["title"] = artifactuuid
+                    artifact_description["description"] = ""
+                    if "title" in ar.keys() and len(ar["title"])>0:
+                        artifact_description["title"] = ar["title"]
+                    if "description" in ar.keys() and len(ar["description"])>0:
+                        artifact_description["description"] = ar["description"]
+
+                    local_artifacts.append(artifact_description)
+                    log.debug("artifact_uri :\t" + artifacturi)
+
+    if len(local_artifacts):
+        c.local_artifacts = local_artifacts
 
     return toolkit.render('package/contracts_external.html',
                           extra_vars={

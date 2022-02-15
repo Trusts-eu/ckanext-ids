@@ -28,6 +28,27 @@ super() }}{% endblock %}
 
 {% block primary_content_inner %}
     {{ super() }}
+   {% if 'local_artifacts' in g %}
+   <section id="dataset-artifacts" class="contracts">
+       These artifacts are now available for you to consume:
+       <ul>
+       {% for artifact in g.local_artifacts%}
+           <li>
+               <p><b> {{ artifact["title"] }} </b> </p>
+               <p><b> {{ artifact["description"] }} </b> </p>
+               <a class="heading" href="{{ artifact["url"] }}" title="{{ artifact["url"] }}">
+                   <p><b> {{ artifact["url"] }} </b> </p>
+               </a>
+           </li>
+
+       {% endfor %}
+           </ul>
+   {% else %}
+       You have not acquired this resource so far. If you want to access its
+       artifacts, please select a contract from below.
+   {% endif %}
+
+   </section>
    <section id="dataset-contracts" class="contracts">
     {% block contract_list %}
         {% snippet "package/snippets/contracts_list.html", data=g.pkg_dict, contracts=g.contracts %}
