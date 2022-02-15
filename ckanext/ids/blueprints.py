@@ -622,7 +622,6 @@ def contracts_remote():
     graphs = local_connector.ask_broker_for_description(
         element_uri=resource_uri)
 
-
     #  This is failing
     dataset = graphs_to_ckan_result_format(graphs)
 
@@ -631,10 +630,16 @@ def contracts_remote():
 
     c.contracts = contracts
 
+
     # Here we get the local agreements, if they exist
+    # --------------------------------------------------------------------
     resourceId = dataset["id"]
     local_resource = IdsResource.get(resourceId)
-    local_agreements  = local_resource.get_agreements()
+
+    try:
+        local_agreements  = local_resource.get_agreements()
+    except AttributeError:
+        local_agreements = []
 
     local_artifacts = []
     for local_agreement in local_agreements:
