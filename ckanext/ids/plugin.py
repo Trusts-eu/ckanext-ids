@@ -8,6 +8,7 @@ import ckan.plugins.toolkit as toolkit
 from ckan.common import config
 from ckan.lib.plugins import DefaultTranslation
 
+import cachetools.func
 import ckanext.ids.blueprints as blueprints
 from ckanext.ids.metadatabroker.client import broker_package_search
 
@@ -47,10 +48,12 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 
         return schema
 
+
     def after_search(self, search_results, search_params):
-        log.debug("\n................ After Search ................\n+")
-        # log.debug("\n\nParams------------------------------------------>")
-        # log.debug(json.dumps(search_params, indent=2))
+        #log.debug("\n................ After Search ................\n+")
+        #log.debug("\n\nParams------------------------------------------>")
+        #log.debug(json.dumps(search_params, indent=2))
+        #log.debug("-----------------------------------------------------|")
         # log.debug("\n\nResults----------------------------------------->")
         # log.debug(json.dumps(search_results, indent=2))
 
@@ -72,10 +75,10 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         results_from_broker = broker_package_search(q=search_query,
                                                     fq=fq,
                                                     start_offset=start)
-        log.debug(".\n\n\n---BROKER SEARCH RESULTS ARE   ")
-        log.debug(json.dumps([x["name"] for x in  results_from_broker],
-                             indent=1))
-        log.debug(".\n\n---------------------------:)\n\n ")
+        #log.debug(".\n\n\n---BROKER SEARCH RESULTS ARE   ")
+        #log.debug(json.dumps([x["name"] for x in  results_from_broker],
+        #                     indent=1))
+        #log.debug(".\n\n---------------------------:)\n\n ")
 
 
         search_results["results"] = results_from_broker + search_results["results"]

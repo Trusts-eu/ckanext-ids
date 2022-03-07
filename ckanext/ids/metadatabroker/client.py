@@ -277,7 +277,7 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
             "cache_url": None,
             "created": resource_graphs[0]["created"],
             "description": resource_graphs[0]["description"],
-            "format": "__MISSING__",
+            "format": "EXTERNAL",
             "hash": artifact_graphs[0]["checkSum"],
             "id": rg["@id"],
             "last_modified": resource_graphs[0]["modified"],
@@ -305,7 +305,7 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
 
 
 @ckan.logic.side_effect_free
-@cachetools.func.ttl_cache(3)  # CKan does a bunch equivalent requests in
+@cachetools.func.ttl_cache(5)  # CKan does a bunch equivalent requests in
 # rapid succession
 def broker_package_search(q=None, start_offset=0, fq=None):
     # log.debug("\n--- STARTING  BROKER SEARCH  ----------------------------\n")
@@ -345,10 +345,8 @@ def broker_package_search(q=None, start_offset=0, fq=None):
                          if URI(x["type"]) == idsresource])
 
     if len(resource_uris) > 0:
-        log.debug("RESOURCES FOUND <------------------------------------\n")
-        for ru in resource_uris:
-            log.debug(ru.n3() + " <------------------------------------")
-        log.debug("---------------------------||||||||||||||")
+        log.debug(str(len(resource_uris))+"   RESOURCES FOUND "
+                      "<------------------------------------\n")
 
     if len(resource_uris) == 0:
         return search_results
@@ -356,18 +354,11 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     descriptions = {ru.n3(): connector.ask_broker_for_description(ru.n3()[1:-1])
                     for ru in resource_uris}
 
-    log.debug(
-        ".\n....................................................................")
     for k, v in descriptions.items():
-        log.debug(k)
         pm = graphs_to_ckan_result_format(v)
-        log.debug(pm)
-        log.debug("-------------------------------")
         if pm is not None:
             search_results.append(pm)
 
-    log.debug(
-        "\n....................................................................\n\n\n")
 
     # --------- This was an attempt to do it over SPARQL describe
     # ---------- Should be faster.. but harder to parse

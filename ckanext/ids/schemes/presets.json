@@ -9,6 +9,13 @@
         "validators": "not_empty unicode name_validator package_name_validator",
         "form_snippet": "slug.html"
       }
+    },
+    {
+      "preset_name": "access_url",
+      "values": {
+        "validators": "url_validator",
+        "form_snippet": "text.html"
+      }
     }
   ]
 }

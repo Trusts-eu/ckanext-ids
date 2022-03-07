@@ -7,6 +7,8 @@ import requests
 from ckan.common import config
 from requests.auth import HTTPBasicAuth
 
+import cachetools.func
+
 
 
 from ckanext.ids.dataspaceconnector.resourceapi import ResourceApi
@@ -54,11 +56,12 @@ class Connector:
         self.my_catalog_ids = []
         self.resourceAPI = ResourceApi(self.url, self.auth)
 
+
     def broker_knows_us(self):
         if self.broker_knows_us_timestamp is None:
             return False
         tnow = datetime.datetime.now()
-        dt = tnow - self.broker_knows_us_timestamp()
+        dt = tnow - self.broker_knows_us_timestamp
         if dt.total_seconds() > self.broker_knows_us_limit:
             return False
         log.debug("\n________ BROKER STILLS KNOWS US _______________")
@@ -67,6 +70,7 @@ class Connector:
     def get_resource_api(self):
         return self.resourceAPI
 
+    @cachetools.func.ttl_cache(5)
     def search_broker(self, search_string: str,
                       limit: int = 100,
                       offset: int = 0):
@@ -96,6 +100,7 @@ class Connector:
 
         return response.text
 
+    @cachetools.func.ttl_cache(5)
     def query_broker(self, query_string: str, return_if_417=False):
         if not return_if_417:
             self.announce_to_broker()
@@ -117,6 +122,7 @@ class Connector:
 
         return response.text
 
+    @cachetools.func.ttl_cache(3)
     def ask_broker_for_description(self, element_uri: str):
         self.announce_to_broker()
         resource_contract_tuples = []
@@ -176,6 +182,8 @@ class Connector:
         q = self._build_query_my_resources()
         r = self.query_broker(q, return_if_417=True)
 
+        self.broker_knows_us_timestamp = datetime.datetime.now()
+
         need_to_announce = False
         # If the Index is empty, the broker is probably fresh restarted
         if r.status_code == 417 \
@@ -203,6 +211,7 @@ class Connector:
             log.debug("\n________ NO NEED TO ANNOUNCE US _______________")
             log.debug(str(r.status_code)+"  with lines: "+str(numlines))
             log.debug("\n_______________________________________________\n")
+            self.broker_knows_us_timestamp = datetime.datetime.now()
 
         return True
 

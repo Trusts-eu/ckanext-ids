@@ -24,7 +24,13 @@
         <p>
           {%- if dataset_type == "service" -%}
               {% trans %}
-                This is a service
+                Services are deployed and executed in the premises of the
+            provider. The consuming party access them remotely, and must
+            therefore transfer data.
+
+                When providing a service, be aware that any consumer will
+            transfer their data onto your premisses, and that you will bare
+            the infrastructure cost of processing their data.
               {% endtrans %}
           
           {%- elif dataset_type == "dataset" -%}
@@ -36,7 +42,12 @@
               {% endtrans %}
           {%- elif dataset_type == "application" -%}
             {% trans %}
-            This is an application
+              Applications are deployed and executed in the premises of the
+            consumer. The consumer party access them localy, and therefore
+            doesn't need to transfer any data outside of their premises.
+
+            When providing an application, be aware that the code of said
+            application will be transferred to the consumer.
             {% endtrans %}
           {%- endif -%}
         </p>

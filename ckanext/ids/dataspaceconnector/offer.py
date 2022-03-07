@@ -18,10 +18,15 @@ The Offer Model of the Dataspace Connector
 }
 """
 
+import logging
+import json
 
 class Offer:
 
     def __init__(self, pkg_dict):
+        logging.error("\n\n\n---------------------------- CREATING OFFER")
+        logging.error(json.dumps(pkg_dict, indent=1))
+        self.access_url = None
         self.title = pkg_dict['title']
         self.keywords = pkg_dict['tags']
         self.publisher = pkg_dict['owner_org']
@@ -33,6 +38,8 @@ class Offer:
             "https://www.trusts-data.eu/ontology/theme": pkg_dict['theme']
         }
         self.additional = additional
+        if "base_URL" in pkg_dict.keys():
+            self.access_url = pkg_dict["base_URL"]
 
         if "extras" in pkg_dict:
             for entry in pkg_dict["extras"]:
@@ -43,6 +50,9 @@ class Offer:
         else:
             self.catalog_iri = None
             self.offer_iri = None
+
+        logging.error("\n----------------------------OFFER|")
+
 
     def to_dictionary(self):
         d = {

@@ -10,6 +10,14 @@ dataset_fields:
   form_placeholder: e.g. MyDataset, MyService, MyApp
   display_property: dc:title
 
+- field_name: base_URL
+  label:
+    en: Base URL
+  preset: access_url
+  form_placeholder: as visible from your DSC
+  display_property: dc:accessURL
+  help_text: Should be something like http://containername:port/path/to/api
+
 - field_name: name
   label: URL
   preset: package_slug

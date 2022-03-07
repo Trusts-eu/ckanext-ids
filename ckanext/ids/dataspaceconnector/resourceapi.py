@@ -19,6 +19,7 @@
 
 import requests
 import json
+import cachetools.func
 
 # Suppress ssl verification warning
 requests.packages.urllib3.disable_warnings()
@@ -45,6 +46,7 @@ class ResourceApi:
         response = self.session.get(offer_uri)
         return response.status_code < 399
 
+    @cachetools.func.ttl_cache(3)
     def get_catalogs(self, data={}):
         response = self.session.get(self.recipient + "/api/catalogs")
         print("GETting catalogues returned:", response.status_code,

@@ -11,3 +11,7 @@ class Resource(dict):
             self.artifact_iri = resource_dict["artifact"]
         else:
             self.artifact_iri = None
+        if 'service_accessURL' in resource_dict:
+            self.service_accessURL = resource_dict["service_accessURL"]
+        else:
+            self.service_accessURL = None

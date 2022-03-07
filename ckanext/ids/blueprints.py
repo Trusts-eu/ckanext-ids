@@ -183,7 +183,15 @@ def push_to_dataspace_connector(data):
         local_resource_dataspace_connector.add_resource_to_catalog(catalog,
                                                                    offers)
     # adding resources
-    for value in data["resources"]:
+
+    # If this is a service, we must add a new resource which points to the
+    # access URL
+    extraresources = []
+    if offer.access_url is not None:
+        newresource = {"service_accessURL" : offer.access_url}
+        extraresources.append(newresource)
+
+    for value in data["resources"]+extraresources:
         # this has also to run for every resource
         resource = Resource(value)
         if resource.representation_iri is None:
@@ -199,7 +207,11 @@ def push_to_dataspace_connector(data):
         # CKAN is something like localhost:5000 which won't resolve well in
         # the DSC. Thus we re-write the url to take into account the name by
         # which the CKAN is accessible from the DSC.
-        internal_resource_url = transform_url_internal_network(value["url"])
+        if resource.service_accessURL is None:
+            internal_resource_url = transform_url_internal_network(value["url"])
+        else:
+            internal_resource_url = resource.service_accessURL
+
         if resource.artifact_iri is None:
             artifact = local_resource_dataspace_connector.create_artifact(
                 data={"accessUrl": internal_resource_url})
@@ -211,10 +223,13 @@ def push_to_dataspace_connector(data):
                 data={"accessUrl": internal_resource_url})
             artifact = resource.artifact_iri
 
-        # add these on the resource meta
-        patch_data = {"id": value["id"], "representation": representation,
-                      "artifact": artifact}
-        logic.action.patch.resource_patch(context, data_dict=patch_data)
+        if "id" in value:
+            # add these on the resource meta
+            patch_data = {"id": value["id"], "representation": representation,
+                          "artifact": artifact}
+            logic.action.patch.resource_patch(context, data_dict=patch_data)
+
+
     changed_extras = [{"key": "catalog", "value": catalog},
                       {"key": "offers", "value": offers}]
     extras = merge_extras(data.get("extras", []), changed_extras)
@@ -518,32 +533,16 @@ def contract_accept():
 # endpoint to accept a contract offer
 @ids_actions.route('/ids/actions/get_data', methods=['GET'])
 def get_data():
-    url = "http://local-core:8080/api/artifacts/"+request.args.get(
+    dscurl = config.get("ckanext.ids.trusts_local_dataspace_connector_url")
+    dscport = str(config.get(
+        "ckanext.ids.trusts_local_dataspace_connector_port"))
+    basedscurl = dscurl+":"+dscport
+
+    url = basedscurl+"/api/artifacts/"+request.args.get(
         "artifact_id")
     local_connector = Connector()
     local_connector_resource_api = local_connector.get_resource_api()
-    # get the data
-    # FIXME: this equivalent to the postman call. I tried even to add extra headers but it always fails with a timeout
-    # exception on the dsc. the same call works perfectly from the browser or through postman
-    # import http.client
-    # conn = http.client.HTTPConnection("provider-core", 8080)
-    # payload = ''
-    # headers = {
-    #  'Authorization': 'Basic YWRtaW46cGFzc3dvcmQ=',
-    #  'Cache-Control': 'no-cache',
-    #  'Connection': 'keep-alive',
-    #  'Host':'provider-core:8080',
-    #  'Pragma':'no-cache',
-    #  'Upgrade-Insecure-Requests': 1,
-    #  'Accept-Encoding': 'gzip, deflate',
-    #  'Accept-Language': 'en-US,en;q=0.9',
-    #  'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-    #  'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36'
-    # }
-    # conn.request("GET", "/api/artifacts/ede29152-893d-4f26-8ad2-d10088c95efa/data", payload, headers)
-    # res = conn.getresponse()
-    # data = res.read()
-    # print(data.decode("utf-8"))
+
     data_response = local_connector_resource_api.get_data(url)
     return Response(
         stream_with_context(data_response.iter_content(chunk_size=1024)),
