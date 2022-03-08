@@ -48,12 +48,13 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 
         return schema
 
-
     def after_search(self, search_results, search_params):
-        #log.debug("\n................ After Search ................\n+")
-        #log.debug("\n\nParams------------------------------------------>")
-        #log.debug(json.dumps(search_params, indent=2))
-        #log.debug("-----------------------------------------------------|")
+        if "ext_include_broker_results" in search_params["extras"]:
+            if not search_params["extras"]["ext_include_broker_results"]:
+                return search_results
+        log.debug("\n................ After Search ................\n+")
+        # log.debug("\n\nParams------------------------------------------>")
+        # log.debug(json.dumps(search_params, indent=2))
         # log.debug("\n\nResults----------------------------------------->")
         # log.debug(json.dumps(search_results, indent=2))
 
@@ -92,19 +93,22 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         log.debug("\n................ Before View ................\n+")
         data_application = {
             'fq': '+type:application +organization:' + pkg_dict['name'],
-            'include_private': True
+            'include_private': True,
+            'ext_include_broker_results': False
         }
         application_search = toolkit.get_action("package_search")(None,
                                                                   data_application)
         data_service = {
             'fq': '+type:service +organization:' + pkg_dict['name'],
-            'include_private': True
+            'include_private': True,
+            'ext_include_broker_results': False
         }
         service_search = toolkit.get_action("package_search")(None,
                                                               data_service)
         data_dataset = {
             'fq': '+type:dataset +organization:' + pkg_dict['name'],
-            'include_private': True
+            'include_private': True,
+            'ext_include_broker_results': False
         }
         dataset_search = toolkit.get_action("package_search")(None,
                                                               data_dataset)
