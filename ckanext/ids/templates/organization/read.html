@@ -4,6 +4,8 @@
     {% snippet 'snippets/add_dataset.html', group=group_dict.id %}
     {% snippet 'snippets/add_dataset.html', group=group_dict.id, dataset_type='application' %}
     {% snippet 'snippets/add_dataset.html', group=group_dict.id, dataset_type='service' %}
-    {% link_for _('Push to Central Node'), named_route='ids_actions.push_organization_view', id=group_dict.id, class_='btn btn-success', icon='layer-forward' %}
+{#
+      {% link_for _('Push to Central Node'), named_route='ids_actions.push_organization_view', id=group_dict.id, class_='btn btn-success', icon='layer-forward' %}
+#}
   {% endif %}
 {% endblock %}
