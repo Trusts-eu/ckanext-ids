@@ -1,3 +1,4 @@
+import datetime
 import hashlib
 import logging
 import urllib.parse
@@ -65,7 +66,7 @@ def _parse_broker_tabular_response(raw_text, sep="\t"):
         if irow == 0:
             colnames = [x.replace("?", "") for x in vals]
             continue
-        d = {cname: vals[ci]
+        d = {cname: vals[ci].strip()
              for ci, cname in enumerate(colnames)}
         result.append(d)
 
@@ -97,18 +98,22 @@ def _sparl_get_all_resources(resource_type: str,
 
     query = """
       PREFIX owl: <http://www.w3.org/2002/07/owl#>
-      SELECT ?resultUri ?type  WHERE
+      PREFIX ids: <https://w3id.org/idsa/core/>
+      SELECT ?resultUri ?type ?title ?description ?assettype WHERE
       { ?resultUri a ?type . 
         ?conn <https://w3id.org/idsa/core/offeredResource> ?resultUri .
+        ?resultUri ids:title ?title .
+        ?resultUri ids:description ?description .
         #FILTER NOT EXISTS { ?conn owl:sameAs """ + catalogiri + """ }
     
         """
     if resource_type is None or resource_type == "None":
-        pass
+        query += "\n ?resultUri " + URI(type_pred).n3() + " ?assettype."
     else:
         typeuri = URI("https://www.trusts-data.eu/ontology/" + \
                       resource_type.capitalize())
         query += "\n ?resultUri " + URI(type_pred).n3() + typeuri.n3() + "."
+        query += "BIND( "+ typeuri.n3() +" AS ?assettype) ."
     query += "\n}"
     return query
 
@@ -200,6 +205,113 @@ def rewrite_urls(provider_base, input_url):
     a = urlparse(input_url)
     return a._replace(netloc=provider_base).geturl()
 
+# We pass the results of a query with
+#    SELECT ?resultUri ?type ?title ?description ?assettype WHERE
+def create_moot_ckan_result(resultUri : str,
+                            title : str,
+                            description : str,
+                            assettype: str,
+                            **kwargs):
+
+    # We remove the < > from URIs
+    if assettype.startswith("<") and assettype.endswith(">"):
+        assettype = assettype[1:-1]
+    if resultUri.startswith("<") and resultUri.endswith(">"):
+        resultUri = resultUri[1:-1]
+
+    log.error("MOOT RESULT FOR " + resultUri + "\t" + title + "~~~~~~~~~~")
+    theirname = resultUri
+    organization_name = theirname.split("/")[2].split(":")[0]
+    providing_base_url = "/".join(organization_name.split("/")[:3])
+    organization_data = {
+        "id": "52bc9332-2ba1-4c4f-bf85-5a141cd68423",
+        "name": organization_name,
+        "title": "Orga1",
+        "type": "organization",
+        "description": "",
+        "image_url": "",
+        "created": "2022-02-02T16:32:58.653424",
+        "is_organization": True,
+        "approval_status": "approved",
+        "state": "active"
+    }
+    resources = []
+
+    packagemeta = deepcopy(empty_result)
+    packagemeta["id"] = resultUri
+    packagemeta["license_id"] = None
+    packagemeta["license_url"] =  None
+    packagemeta["license_title"] = None
+    packagemeta["metadata_created"] = datetime.datetime.now().isoformat()
+    packagemeta["metadata_modified"] = datetime.datetime.now().isoformat()
+    packagemeta["name"] = title
+    packagemeta["title"] = title
+    packagemeta["description"] = description
+    packagemeta["type"] = assettype.split("/")[
+        -1].lower()
+    packagemeta["theme"] = "THEME"
+    packagemeta["version"] = "VERSION"
+
+    # These are the values we will use in succesive steps
+    packagemeta["external_provider_name"] = organization_name
+    packagemeta["to_process_external"] = config.get(
+        "ckan.site_url") + "/ids/processExternal?uri=" + \
+                                         urllib.parse.quote_plus(
+                                             resultUri)
+    packagemeta["provider_base_url"] = providing_base_url
+
+    packagemeta["creator_user_id"] = "X"
+    packagemeta["isopen"]: None
+    packagemeta["maintainer"] = None
+    packagemeta["maintainer_email"] = None
+    packagemeta["notes"] = None
+    packagemeta["num_tags"] = 0
+    packagemeta["private"] = False
+    packagemeta["state"] = "active"
+    packagemeta["relationships_as_object"] = []
+    packagemeta["relationships_as_subject"] = []
+    packagemeta["url"] = providing_base_url
+    packagemeta["tags"] = []  # (/)
+    packagemeta["groups"] = []  # (/)
+
+    packagemeta["dataset_count"] = 0
+    packagemeta["service_count"] = 0
+    packagemeta["application_count"] = 0
+    packagemeta[packagemeta["type"] + "count"] = 1
+
+
+    empty_ckan_resource = {
+        "artifact": "http://artifact.uri/",
+        "cache_last_updated": None,
+        "cache_url": None,
+        "created": datetime.datetime.now().isoformat(),
+        "description": description,
+        "format": "EXTERNAL",
+        "hash": "SOMEHASH",
+        "id": "http://artifact.uri/",
+        "last_modified": datetime.datetime.now().isoformat(),
+        "metadata_modified": datetime.datetime.now().isoformat(),
+        "mimetype": "MEDIATYPE",
+        "mimetype_inner": None,
+        "name": title,
+        "package_id": resultUri,
+        "position": 0,
+        "representation": "http://artifact.uri/",
+        "resource_type": "resource",
+        "size": 999,
+        "state": "active",
+        "url": "http://artifact.uri/",
+        "url_type": "upload"
+    }
+    resources.append(empty_ckan_resource)
+
+    packagemeta["organization"] = organization_data
+    packagemeta["owner_org"] = organization_data["id"]
+    packagemeta["resources"] = resources
+    packagemeta["num_resources"] = 1
+    #log.error(json.dumps(packagemeta,indent=1)+"\n.\n.\n.\n\n")
+
+    return packagemeta
 
 def graphs_to_ckan_result_format(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
@@ -353,27 +465,22 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     if len(resource_uris) == 0:
         return search_results
 
-    descriptions = {
-        ru.n3(): connector.ask_broker_for_description(ru.n3()[1:-1])
-        for ru in resource_uris}
+    for res in parsed_response:
+        pm = create_moot_ckan_result(**res)
+        search_results.append(pm)
 
-    for k, v in descriptions.items():
-        pm = graphs_to_ckan_result_format(v)
-        if pm is not None:
-            search_results.append(pm)
 
-    # --------- This was an attempt to do it over SPARQL describe
-    # ---------- Should be faster.. but harder to parse
-    # log.info("URIs:\n"+"\n".join([x.n3() for x in resource_uris]))
-    # query_for_info = _sparql_describe_many_resources(resource_uris)
-    # raw_response = connector.query_broker(query_for_info)
-    # all_triples = _parse_broker_tabular_response(raw_response)
-    # g = listofdicts2graph(all_triples)
-    # log.debug("-----INFO FROM BROKER ------------------------------")
-    # rj = json.dumps(all_triples, indent=2)
-    # for ru in resource_uris:
-    #    r = {}
-    # log.debug(rj)
+    # -- SLOW version
+    # descriptions = {
+    #     ru.n3(): connector.ask_broker_for_description(ru.n3()[1:-1])
+    #     for ru in resource_uris}
+    #
+    # for k, v in descriptions.items():
+    #     pm = graphs_to_ckan_result_format(v)
+    #     if pm is not None:
+    #         search_results.append(pm)
+
+
 
     #log.debug("---- END BROKER SEARCH ------------\n-----------\n----\n-----")
     return search_results

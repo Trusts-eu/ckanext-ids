@@ -100,6 +100,10 @@ class Connector:
         params = {"recipient": self.broker_url}
         url = pathjoin(self.url, "api/ids/query")
         data = query_string.encode("utf-8")
+        #log.error("Querying "+url+"\nwith "
+        #                          "string"+query_string+" ->
+        #                          "+self.broker_url)
+        #log.error("\n|\n|\n|\n|\n|------------")
         response = requests.post(url=url,
                                  params=params,
                                  data=data,
