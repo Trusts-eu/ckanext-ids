@@ -24,13 +24,13 @@ import json
 class Offer:
 
     def __init__(self, pkg_dict):
-        logging.error("\n\n\n---------------------------- CREATING OFFER")
-        logging.error(json.dumps(pkg_dict, indent=1))
+        logging.debug("\n\n\n---------------------------- CREATING OFFER")
+        logging.debug(json.dumps(pkg_dict, indent=1))
         self.access_url = None
+        self.license =None
         self.title = pkg_dict['title']
         self.keywords = pkg_dict['tags']
         self.publisher = pkg_dict['owner_org']
-        self.license = pkg_dict['license_url']
         additional = {
             "https://www.trusts-data.eu/ontology/asset_type":
                 "https://www.trusts-data.eu/ontology/" + str(pkg_dict[
@@ -40,6 +40,9 @@ class Offer:
         self.additional = additional
         if "base_URL" in pkg_dict.keys():
             self.access_url = pkg_dict["base_URL"]
+
+        if "license_url" in pkg_dict.keys():
+            self.license = pkg_dict["license_url"]
 
         if "extras" in pkg_dict:
             for entry in pkg_dict["extras"]:
@@ -51,7 +54,7 @@ class Offer:
             self.catalog_iri = None
             self.offer_iri = None
 
-        logging.error("\n----------------------------OFFER|")
+        logging.debug("\n----------------------------OFFER|")
 
 
     def to_dictionary(self):

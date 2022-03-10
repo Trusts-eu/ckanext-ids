@@ -231,9 +231,9 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
 
     packagemeta = deepcopy(empty_result)
     packagemeta["id"] = resource_uri
-    packagemeta["license_id"] = resource_graphs[0]["standardLicense"]
-    packagemeta["license_url"] = resource_graphs[0]["standardLicense"]
-    packagemeta["license_title"] = resource_graphs[0]["standardLicense"]
+    packagemeta["license_id"] = resource_graphs[0]["standardLicense"] if "standardLicense" in resource_graphs[0] else None
+    packagemeta["license_url"] = resource_graphs[0]["standardLicense"] if "standardLicense" in resource_graphs[0] else None
+    packagemeta["license_title"] = resource_graphs[0]["standardLicense"] if "standardLicense" in resource_graphs[0] else None
     packagemeta["metadata_created"] = resource_graphs[0]["created"]
     packagemeta["metadata_modified"] = resource_graphs[0]["modified"]
     packagemeta["name"] = resource_graphs[0]["title"]
