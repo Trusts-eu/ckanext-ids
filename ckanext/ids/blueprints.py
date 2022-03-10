@@ -351,6 +351,9 @@ def publish_action(id):
 
     c.pkg_dict = dataset
     contract_meta = request.data
+    #logging.error("\n\n\n\n\n\n\n...................... CONTRACT META \n")
+    #logging.error(json.dumps(contract_meta,indent=1))
+    #logging.error("......................\n\n\n\n\n\n\n")
     # create the contract
     contract_id = local_connector_resource_api.create_contract(
         {
@@ -431,18 +434,15 @@ def contracts(id, offering_info=None, errors=None):
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
     dataset = toolkit.get_action('package_show')(context, {'id': id})
-    c.pkg_dict = dataset
-    contract = json.loads(next(
-        (sub for sub in dataset["extras"] if sub['key'] == 'contract_meta'),
-        None)["value"])
+    c.contracts = []
+    if "extras" in dataset.keys():
+        c.pkg_dict = dataset
+        possible_contracts = [sub for sub in dataset["extras"]
+                              if sub['key'] == 'contract_meta']
+        if len(possible_contracts)>0:
+            contract = json.loads(next(possible_contracts)["value"])
+            c.contracts = [contract]
 
-    log.debug("\n\n|===================================================>")
-    log.debug(json.dumps(contract, indent=1))
-    log.debug(str(dataset))
-    log.debug("\n<===================================================|\n")
-    log.debug("||||||||||||||||||||||||||||||||||||||||||||||||||||||\n\n")
-
-    c.contracts = [contract]
     return toolkit.render('package/contracts.html',
                           extra_vars={
                               u'pkg_dict': dataset
@@ -647,8 +647,8 @@ def contracts_remote():
             local_connector_resource_api = local_connector.get_resource_api()
             artifacts = local_connector_resource_api.get_artifacts_for_agreement(
                     local_agreement.id)
-            log.debug("\n~~~~~~~~~~~")
-            log.debug("agreement_uri: \t"+local_agreement.id)
+            #log.debug("\n~~~~~~~~~~~")
+            #log.debug("agreement_uri: \t"+local_agreement.id)
             if "_embedded" in artifacts.keys():
                 for ar in artifacts["_embedded"]["artifacts"]:
                     artifacturi = ar["_links"]["self"]["href"]
@@ -667,7 +667,7 @@ def contracts_remote():
                         artifact_description["description"] = ar["description"]
 
                     local_artifacts.append(artifact_description)
-                    log.debug("artifact_uri :\t" + artifacturi)
+                    #log.debug("artifact_uri :\t" + artifacturi)
 
     if len(local_artifacts):
         c.local_artifacts = local_artifacts

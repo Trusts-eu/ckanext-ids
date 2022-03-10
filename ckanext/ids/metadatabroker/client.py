@@ -1,22 +1,14 @@
-
 import hashlib
-
-from copy import deepcopy
-
-import logging
-
 import logging
 import urllib.parse
-
+from copy import deepcopy
 from typing import Set, List, Dict
+from urllib.parse import urlparse
 
-import cachetools.func
 import ckan.lib.dictization
 import ckan.logic as logic
 import rdflib
 from ckan.common import config
-
-from urllib.parse import urlparse
 
 from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.metadatabroker.translations_broker_ckan import URI, \
@@ -137,16 +129,21 @@ def listofdicts2graph(lod: List[Dict],
 
     return g
 
+
 def _to_ckan_package(raw_jsonld: Dict):
     package = dict()
     package['title'] = raw_jsonld['ids:title'][0]['@value']
-    package['name'] = hashlib.sha256(raw_jsonld['@id'].encode('utf-8')).hexdigest()
+    package['name'] = hashlib.sha256(
+        raw_jsonld['@id'].encode('utf-8')).hexdigest()
     package['description'] = raw_jsonld['ids:description'][0]['@value']
     package['version'] = raw_jsonld['ids:version']
-    package['theme'] = raw_jsonld['https://www.trusts-data.eu/ontology/theme']['@id']
-    package['type'] = get_resource_type(raw_jsonld['https://www.trusts-data.eu/ontology/asset_type']['@id'])
+    package['theme'] = raw_jsonld['https://www.trusts-data.eu/ontology/theme'][
+        '@id']
+    package['type'] = get_resource_type(
+        raw_jsonld['https://www.trusts-data.eu/ontology/asset_type']['@id'])
     package['owner_org'] = raw_jsonld['ids:publisher']['@id']
     return package
+
 
 def get_resource_type(type):
     if type == "https://www.trusts-data.eu/ontology/Dataset":
@@ -158,7 +155,9 @@ def get_resource_type(type):
     else:
         raise ValueError("Uknown dataset type: " + type + " Mapping failed.")
 
+
 import json
+
 
 def graphs_to_contracts(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
@@ -172,28 +171,30 @@ def graphs_to_contracts(raw_jsonld: Dict):
     organization_name = theirname.split("/")[2].split(":")[0]
     providing_base_url = "/".join(resource_uri.split("/")[:3])
 
-    permission_graph_dict = {x["@id"]:x for x in permission_graphs}
+    permission_graph_dict = {x["@id"]: x for x in permission_graphs}
     results = []
     for cg in contract_graphs:
-        perm_graph = permission_graph_dict[cg["permission"]]
+        perms = cg["permission"]
+        if not isinstance(perms, list):
+            perms = [perms]
         r = dict()
+        r["policies"] = [
+            {"type": permission_graph_dict[per]["description"].upper().replace(
+                "-", "_")} for per in perms]
         r["contract_start"] = cg["contractStart"]
         r["contract_end"] = cg["contractEnd"]
         r["title"] = resource_graphs[0]["title"]
         r["errors"] = {}
-        r["policies"] = [{"type": perm_graph["description"].upper().replace("-","_")}]
         r["provider_url"] = providing_base_url
         r["resourceId"] = resource_uri
         r["artifactId"] = artifact_graphs[0]["sameAs"]
         r["contractId"] = cg["sameAs"]
 
 
-        log.debug("\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        log.debug(json.dumps(r, indent=2))
-
         results.append(r)
 
     return results
+
 
 def rewrite_urls(provider_base, input_url):
     a = urlparse(input_url)
@@ -231,9 +232,12 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
 
     packagemeta = deepcopy(empty_result)
     packagemeta["id"] = resource_uri
-    packagemeta["license_id"] = resource_graphs[0]["standardLicense"] if "standardLicense" in resource_graphs[0] else None
-    packagemeta["license_url"] = resource_graphs[0]["standardLicense"] if "standardLicense" in resource_graphs[0] else None
-    packagemeta["license_title"] = resource_graphs[0]["standardLicense"] if "standardLicense" in resource_graphs[0] else None
+    packagemeta["license_id"] = resource_graphs[0][
+        "standardLicense"] if "standardLicense" in resource_graphs[0] else None
+    packagemeta["license_url"] = resource_graphs[0][
+        "standardLicense"] if "standardLicense" in resource_graphs[0] else None
+    packagemeta["license_title"] = resource_graphs[0][
+        "standardLicense"] if "standardLicense" in resource_graphs[0] else None
     packagemeta["metadata_created"] = resource_graphs[0]["created"]
     packagemeta["metadata_modified"] = resource_graphs[0]["modified"]
     packagemeta["name"] = resource_graphs[0]["title"]
@@ -248,7 +252,7 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
     packagemeta["to_process_external"] = config.get(
         "ckan.site_url") + "/ids/processExternal?uri=" + \
                                          urllib.parse.quote_plus(
-        resource_uri)
+                                             resource_uri)
     packagemeta["provider_base_url"] = providing_base_url
 
     packagemeta["creator_user_id"] = "X"
@@ -305,8 +309,6 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
 
 
 @ckan.logic.side_effect_free
-@cachetools.func.ttl_cache(5)  # CKan does a bunch equivalent requests in
-# rapid succession
 def broker_package_search(q=None, start_offset=0, fq=None):
     # log.debug("\n--- STARTING  BROKER SEARCH  ----------------------------\n")
     # log.debug(str(q))
@@ -327,7 +329,7 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     except:
         pass
 
-    log.debug("Requested search type was " + str(requested_type) + "\n\n")
+    #log.debug("Requested search type was " + str(requested_type) + "\n\n")
     search_results = []
     resource_uris = []
 
@@ -345,20 +347,20 @@ def broker_package_search(q=None, start_offset=0, fq=None):
                          if URI(x["type"]) == idsresource])
 
     if len(resource_uris) > 0:
-        log.debug(str(len(resource_uris))+"   RESOURCES FOUND "
-                      "<------------------------------------\n")
+        log.debug(str(len(resource_uris)) + "   RESOURCES FOUND "
+                                            "<------------------------------------\n")
 
     if len(resource_uris) == 0:
         return search_results
 
-    descriptions = {ru.n3(): connector.ask_broker_for_description(ru.n3()[1:-1])
-                    for ru in resource_uris}
+    descriptions = {
+        ru.n3(): connector.ask_broker_for_description(ru.n3()[1:-1])
+        for ru in resource_uris}
 
     for k, v in descriptions.items():
         pm = graphs_to_ckan_result_format(v)
         if pm is not None:
             search_results.append(pm)
-
 
     # --------- This was an attempt to do it over SPARQL describe
     # ---------- Should be faster.. but harder to parse
@@ -373,5 +375,5 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     #    r = {}
     # log.debug(rj)
 
-    log.debug("---- END BROKER SEARCH ------------\n-----------\n----\n-----")
+    #log.debug("---- END BROKER SEARCH ------------\n-----------\n----\n-----")
     return search_results

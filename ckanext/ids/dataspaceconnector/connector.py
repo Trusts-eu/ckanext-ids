@@ -7,10 +7,6 @@ import requests
 from ckan.common import config
 from requests.auth import HTTPBasicAuth
 
-import cachetools.func
-
-
-
 from ckanext.ids.dataspaceconnector.resourceapi import ResourceApi
 
 log = logging.getLogger("ckanext")
@@ -50,12 +46,11 @@ class Connector:
         # ToDo Make sure this config is working
         self.broker_url = config.get('ckanext.ids.trusts_central_broker',
                                      'http://central-core:8282/infrastructure')
-        #self.broker_url = 'http://central-core:8080/infrastructure'
+        # self.broker_url = 'http://central-core:8080/infrastructure'
         self.broker_knows_us_timestamp = None
         self.broker_knows_us_limit = 10
         self.my_catalog_ids = []
         self.resourceAPI = ResourceApi(self.url, self.auth)
-
 
     def broker_knows_us(self):
         if self.broker_knows_us_timestamp is None:
@@ -70,7 +65,6 @@ class Connector:
     def get_resource_api(self):
         return self.resourceAPI
 
-    @cachetools.func.ttl_cache(5)
     def search_broker(self, search_string: str,
                       limit: int = 100,
                       offset: int = 0):
@@ -100,7 +94,6 @@ class Connector:
 
         return response.text
 
-    @cachetools.func.ttl_cache(5)
     def query_broker(self, query_string: str, return_if_417=False):
         if not return_if_417:
             self.announce_to_broker()
@@ -122,7 +115,6 @@ class Connector:
 
         return response.text
 
-    @cachetools.func.ttl_cache(3)
     def ask_broker_for_description(self, element_uri: str):
         self.announce_to_broker()
         resource_contract_tuples = []
@@ -162,7 +154,7 @@ class Connector:
               ?resultUri a <https://w3id.org/idsa/core/Resource> .
               ?conn <https://w3id.org/idsa/core/offeredResource> ?resultUri .
               ?conn owl:sameAs <""" + cat + ">. "
-            qpart+="}"
+            qpart += "}"
             qparts.append(qpart)
 
         q += "\nUNION\n".join(qparts)
@@ -209,7 +201,7 @@ class Connector:
                 self.broker_knows_us_timestamp = datetime.datetime.now()
         else:
             log.debug("\n________ NO NEED TO ANNOUNCE US _______________")
-            log.debug(str(r.status_code)+"  with lines: "+str(numlines))
+            log.debug(str(r.status_code) + "  with lines: " + str(numlines))
             log.debug("\n_______________________________________________\n")
             self.broker_knows_us_timestamp = datetime.datetime.now()
 
@@ -224,7 +216,7 @@ class Connector:
                                  params=params,
                                  auth=HTTPBasicAuth(self.auth[0],
                                                     self.auth[1]))
-        log.debug("------ \n\n REQUEST TO ADD TO BROKER "+url+" :")
+        log.debug("------ \n\n REQUEST TO ADD TO BROKER " + url + " :")
         log.debug(json.dumps(params, indent=1))
         log.debug("------ RESPONSE OF SEND RESOURCE TO BROKER IS :  ")
         log.debug(response.text)
