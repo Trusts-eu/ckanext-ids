@@ -99,11 +99,12 @@ def _sparl_get_all_resources(resource_type: str,
     query = """
       PREFIX owl: <http://www.w3.org/2002/07/owl#>
       PREFIX ids: <https://w3id.org/idsa/core/>
-      SELECT ?resultUri ?type ?title ?description ?assettype WHERE
+      SELECT ?resultUri ?type ?title ?description ?assettype ?externalname WHERE
       { ?resultUri a ?type . 
         ?conn <https://w3id.org/idsa/core/offeredResource> ?resultUri .
         ?resultUri ids:title ?title .
         ?resultUri ids:description ?description .
+        ?resultUri owl:sameAs ?externalname .
         #FILTER NOT EXISTS { ?conn owl:sameAs """ + catalogiri + """ }
     
         """
@@ -113,7 +114,7 @@ def _sparl_get_all_resources(resource_type: str,
         typeuri = URI("https://www.trusts-data.eu/ontology/" + \
                       resource_type.capitalize())
         query += "\n ?resultUri " + URI(type_pred).n3() + typeuri.n3() + "."
-        query += "BIND( "+ typeuri.n3() +" AS ?assettype) ."
+        query += "BIND( " + typeuri.n3() + " AS ?assettype) ."
     query += "\n}"
     return query
 
@@ -161,9 +162,6 @@ def get_resource_type(type):
         raise ValueError("Uknown dataset type: " + type + " Mapping failed.")
 
 
-import json
-
-
 def graphs_to_contracts(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
     contract_graphs = [x for x in g if x["@type"] == "ids:ContractOffer"]
@@ -195,7 +193,6 @@ def graphs_to_contracts(raw_jsonld: Dict):
         r["artifactId"] = artifact_graphs[0]["sameAs"]
         r["contractId"] = cg["sameAs"]
 
-
         results.append(r)
 
     return results
@@ -205,22 +202,25 @@ def rewrite_urls(provider_base, input_url):
     a = urlparse(input_url)
     return a._replace(netloc=provider_base).geturl()
 
+
 # We pass the results of a query with
 #    SELECT ?resultUri ?type ?title ?description ?assettype WHERE
-def create_moot_ckan_result(resultUri : str,
-                            title : str,
-                            description : str,
+def create_moot_ckan_result(resultUri: str,
+                            title: str,
+                            description: str,
                             assettype: str,
+                            externalname: str,
                             **kwargs):
-
     # We remove the < > from URIs
     if assettype.startswith("<") and assettype.endswith(">"):
         assettype = assettype[1:-1]
     if resultUri.startswith("<") and resultUri.endswith(">"):
         resultUri = resultUri[1:-1]
+    if externalname.startswith("<") and externalname.endswith(">"):
+        externalname = externalname[1:-1]
 
-    log.error("MOOT RESULT FOR " + resultUri + "\t" + title + "~~~~~~~~~~")
-    theirname = resultUri
+    #log.error("MOOT RESULT FOR " + resultUri + "\t" + title + "~~~~~~~~~~")
+    theirname = externalname
     organization_name = theirname.split("/")[2].split(":")[0]
     providing_base_url = "/".join(organization_name.split("/")[:3])
     organization_data = {
@@ -240,7 +240,7 @@ def create_moot_ckan_result(resultUri : str,
     packagemeta = deepcopy(empty_result)
     packagemeta["id"] = resultUri
     packagemeta["license_id"] = None
-    packagemeta["license_url"] =  None
+    packagemeta["license_url"] = None
     packagemeta["license_title"] = None
     packagemeta["metadata_created"] = datetime.datetime.now().isoformat()
     packagemeta["metadata_modified"] = datetime.datetime.now().isoformat()
@@ -279,7 +279,6 @@ def create_moot_ckan_result(resultUri : str,
     packagemeta["application_count"] = 0
     packagemeta[packagemeta["type"] + "count"] = 1
 
-
     empty_ckan_resource = {
         "artifact": "http://artifact.uri/",
         "cache_last_updated": None,
@@ -309,9 +308,10 @@ def create_moot_ckan_result(resultUri : str,
     packagemeta["owner_org"] = organization_data["id"]
     packagemeta["resources"] = resources
     packagemeta["num_resources"] = 1
-    #log.error(json.dumps(packagemeta,indent=1)+"\n.\n.\n.\n\n")
+    # log.error(json.dumps(packagemeta,indent=1)+"\n.\n.\n.\n\n")
 
     return packagemeta
+
 
 def graphs_to_ckan_result_format(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
@@ -422,10 +422,10 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
 
 @ckan.logic.side_effect_free
 def broker_package_search(q=None, start_offset=0, fq=None):
-    # log.debug("\n--- STARTING  BROKER SEARCH  ----------------------------\n")
-    # log.debug(str(q))
-    # log.debug(str(fq))
-    # log.debug("-----------------------------------------------------------\n")
+    log.debug("\n--- STARTING  BROKER SEARCH  ----------------------------\n")
+    log.debug(str(q))
+    log.debug(str(fq))
+    log.debug("-----------------------------------------------------------\n")
     default_search = "*:*"
     search_string = q if q is not None else default_search
 
@@ -434,41 +434,53 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     try:
         if fq is not None:
             requested_type = [x for x in fq
-                              if x.startswith("+type")][0]
+                              if "+dataset_type" in x][0]
             requested_type = [x for x in requested_type.split(" ")
-                              if x.startswith("+type")]
+                              if x.startswith("+dataset_type")]
             requested_type = requested_type[0].split(":")[-1].capitalize()
     except:
         pass
 
-    #log.debug("Requested search type was " + str(requested_type) + "\n\n")
+    # log.debug("Requested search type was " + str(requested_type) + "\n\n")
     search_results = []
     resource_uris = []
 
     if len(search_string) > 0 and search_string != default_search:
         raw_response = connector.search_broker(search_string=search_string,
                                                offset=start_offset)
+        parsed_response = _parse_broker_tabular_response(raw_response)
+        resource_uris = set([URI(x["resultUri"])
+                             for x in parsed_response
+                             if URI(x["type"]) == idsresource])
+        descriptions = {
+            ru.n3(): connector.ask_broker_for_description(ru.n3()[1:-1])
+            for ru in resource_uris}
+
+        for k, v in descriptions.items():
+            pm = graphs_to_ckan_result_format(v)
+            if pm is not None:
+                search_results.append(pm)
+
     else:
-        log.debug("Default search activated----")
+        log.debug("Default search activated---- type:"+str(requested_type))
         general_query = _sparl_get_all_resources(resource_type=requested_type)
         raw_response = connector.query_broker(general_query)
 
-    parsed_response = _parse_broker_tabular_response(raw_response)
-    resource_uris = set([URI(x["resultUri"])
-                         for x in parsed_response
-                         if URI(x["type"]) == idsresource])
+        parsed_response = _parse_broker_tabular_response(raw_response)
+        resource_uris = set([URI(x["resultUri"])
+                             for x in parsed_response
+                             if URI(x["type"]) == idsresource])
 
-    if len(resource_uris) > 0:
-        log.debug(str(len(resource_uris)) + "   RESOURCES FOUND "
-                                            "<------------------------------------\n")
+        if len(resource_uris) > 0:
+            log.debug(str(len(resource_uris)) + "   RESOURCES FOUND "
+                                                "<------------------------------------\n")
 
-    if len(resource_uris) == 0:
-        return search_results
+        if len(resource_uris) == 0:
+            return search_results
 
-    for res in parsed_response:
-        pm = create_moot_ckan_result(**res)
-        search_results.append(pm)
-
+        for res in parsed_response:
+            pm = create_moot_ckan_result(**res)
+            search_results.append(pm)
 
     # -- SLOW version
     # descriptions = {
@@ -480,7 +492,5 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     #     if pm is not None:
     #         search_results.append(pm)
 
-
-
-    #log.debug("---- END BROKER SEARCH ------------\n-----------\n----\n-----")
+    # log.debug("---- END BROKER SEARCH ------------\n-----------\n----\n-----")
     return search_results

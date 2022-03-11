@@ -100,10 +100,9 @@ class Connector:
         params = {"recipient": self.broker_url}
         url = pathjoin(self.url, "api/ids/query")
         data = query_string.encode("utf-8")
-        #log.error("Querying "+url+"\nwith "
-        #                          "string"+query_string+" ->
-        #                          "+self.broker_url)
-        #log.error("\n|\n|\n|\n|\n|------------")
+        log.error("Querying "+url+"\nwith "
+                                  "string"+query_string+" ->"+self.broker_url)
+        log.error("\n|\n|\n|\n|\n|------------")
         response = requests.post(url=url,
                                  params=params,
                                  data=data,
@@ -171,7 +170,9 @@ class Connector:
         # We check the broker response, because if we register when
         # there is already an index for this connector, all resources
         # are deleted :S
+        log.error("----ANOUNCE BROKER\n\n")
         if self.broker_knows_us():
+            log.error("\t|---BROKER KNOWS US 1")
             return True
 
         self.fetch_catalog_ids()
@@ -182,9 +183,10 @@ class Connector:
 
         need_to_announce = False
         # If the Index is empty, the broker is probably fresh restarted
-        if r.status_code == 417 \
-                and "empty" in str(r.json()).lower():
+        if r.status_code == 417 :
+            #    and "empty" in str(r.json()).lower():
             need_to_announce = True
+            log.error("\t|--- 417")
 
         # If there are no records for this connector, it doesn't harm to
         # announce ourselves again
@@ -193,7 +195,9 @@ class Connector:
             numlines = len([x for x in r.text.split("\n")])
             if numlines < 1:  # It should contain at least the header line
                 need_to_announce = True
+                log.error("\t|--- 200 but no lines")
 
+        log.error("\t|---NEED"+str(need_to_announce))
         if need_to_announce:
             params = {"recipient": self.broker_url}
             url = pathjoin(self.url, "api/ids/connector/update")
@@ -201,12 +205,14 @@ class Connector:
                                      params=params,
                                      auth=HTTPBasicAuth(self.auth[0],
                                                         self.auth[1]))
+            log.error("\t|--- /connector/update response was "+str(
+                response.status_code))
             if response.status_code < 299:
                 self.broker_knows_us_timestamp = datetime.datetime.now()
         else:
-            log.debug("\n________ NO NEED TO ANNOUNCE US _______________")
-            log.debug(str(r.status_code) + "  with lines: " + str(numlines))
-            log.debug("\n_______________________________________________\n")
+            log.debug("\t---____ NO NEED TO ANNOUNCE US _______________")
+            log.debug("\t---"+str(r.status_code) + "  with lines: " + str(
+                numlines))
             self.broker_knows_us_timestamp = datetime.datetime.now()
 
         return True
