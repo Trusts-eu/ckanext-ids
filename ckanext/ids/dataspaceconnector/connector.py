@@ -191,7 +191,7 @@ class Connector:
         numlines = -1
         if r.status_code < 299:
             numlines = len([x for x in r.text.split("\n")])
-            if numlines == 1:  # It should contain at least the header line
+            if numlines < 1:  # It should contain at least the header line
                 need_to_announce = True
 
         if need_to_announce:
