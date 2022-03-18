@@ -16,6 +16,13 @@
         "validators": "url_validator",
         "form_snippet": "text.html"
       }
+    },
+    {
+      "preset_name": "trusts_access_url",
+      "values": {
+        "validators": "trusts_url_validator",
+        "form_snippet": "text.html"
+      }
     }
   ]
 }

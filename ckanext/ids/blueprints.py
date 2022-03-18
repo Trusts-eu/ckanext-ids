@@ -1,10 +1,9 @@
-import json
-from collections import defaultdict
-
+import copy
 import datetime
 import json
 import logging
 from collections import defaultdict
+from urllib.parse import urlsplit
 
 import ckan.lib.base as base
 import ckan.lib.helpers as h
@@ -17,17 +16,17 @@ import requests
 from ckan.common import _, config
 from dateutil import tz
 from flask import Blueprint, request
+from flask import Response, stream_with_context
 from werkzeug.datastructures import ImmutableMultiDict
 
 from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.dataspaceconnector.contract import Contract
 from ckanext.ids.dataspaceconnector.offer import Offer
 from ckanext.ids.dataspaceconnector.resource import Resource
+from ckanext.ids.metadatabroker.client import graphs_to_artifacts
 from ckanext.ids.metadatabroker.client import graphs_to_ckan_result_format
-from ckanext.ids.metadatabroker.client import _to_ckan_package
 from ckanext.ids.metadatabroker.client import graphs_to_contracts
 from ckanext.ids.model import IdsResource, IdsAgreement
-from flask import Response, stream_with_context
 
 tuplize_dict = logic.tuplize_dict
 clean_dict = logic.clean_dict
@@ -143,7 +142,7 @@ def push_to_dataspace_connector(data):
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
     local_connector = Connector()
-    local_resource_dataspace_connector = local_connector.get_resource_api()
+    local_dsc_api = local_connector.get_resource_api()
     # sync calls to the dataspace connector to create the appropriate objects
     # this will be constant.
     # It might cause an error if the connector does not persist it's data. A restart should fix the problem
@@ -155,19 +154,19 @@ def push_to_dataspace_connector(data):
     # local dataspace connector, we just create a new IRI for it
     # FIXME: check to merge with code below
     if offer.offer_iri is not None and not \
-            local_resource_dataspace_connector.resource_exists(
+            local_dsc_api.resource_exists(
                 offer.offer_iri):
         offer.offer_iri = None
         for value in data["resources"]:
             rep_iri = value["representation"]
-            if not local_resource_dataspace_connector.resource_exists(rep_iri):
+            if not local_dsc_api.resource_exists(rep_iri):
                 value["representation"] = None
             art_iri = value["artifact"]
-            if not local_resource_dataspace_connector.resource_exists(art_iri):
+            if not local_dsc_api.resource_exists(art_iri):
                 value["artifact"] = None
 
     if offer.offer_iri is not None:
-        if local_resource_dataspace_connector.update_offered_resource(
+        if local_dsc_api.update_offered_resource(
                 offer.offer_iri, offer.to_dictionary()):
             offers = offer.offer_iri
         else:
@@ -178,28 +177,45 @@ def push_to_dataspace_connector(data):
             log.error("Offer not found on the Dataspace Connector.")
             return False
     else:
-        offers = local_resource_dataspace_connector.create_offered_resource(
+        offers = local_dsc_api.create_offered_resource(
             offer.to_dictionary())
-        local_resource_dataspace_connector.add_resource_to_catalog(catalog,
-                                                                   offers)
+        local_dsc_api.add_resource_to_catalog(catalog,
+                                              offers)
     # adding resources
 
     # If this is a service, we must add a new resource which points to the
     # access URL
     extraresources = []
     if offer.access_url is not None:
-        newresource = {"service_accessURL" : offer.access_url}
+        newresource = {"service_accessURL": offer.access_url,
+                       "description": "service_base_access_url",
+                       "resource_type": "service_base_access_url"}
         extraresources.append(newresource)
 
-    for value in data["resources"]+extraresources:
+    for value in data["resources"] + extraresources:
+        log.debug(
+            "--- CREATING RESOURCE ------\n" + json.dumps(value, indent=1))
         # this has also to run for every resource
         resource = Resource(value)
+        if resource.service_accessURL is None:
+            internal_resource_url = transform_url_internal_network(
+                value["url"])
+        else:
+            internal_resource_url = resource.service_accessURL
+        representation_metadata = {"title": resource.title,
+                                   "mediaType": resource.mediaType}
+        artifact_metadata = {"accessUrl": internal_resource_url,
+                             "title": resource.title,
+                             "description": resource.description}
         if resource.representation_iri is None:
-            representation = local_resource_dataspace_connector.create_representation()
-            local_resource_dataspace_connector.add_representation_to_resource(
+            representation = local_dsc_api.create_representation(
+                representation_metadata)
+            local_dsc_api.add_representation_to_resource(
                 offers, representation)
         else:
-            local_resource_dataspace_connector.update_representation(resource)
+            local_dsc_api.update_representation(
+                representation_iri=resource.representation_iri,
+                data=representation_metadata)
             representation = resource.representation_iri
 
         # The site_url of CKAN is accessible to the whole world, but not to the
@@ -207,20 +223,16 @@ def push_to_dataspace_connector(data):
         # CKAN is something like localhost:5000 which won't resolve well in
         # the DSC. Thus we re-write the url to take into account the name by
         # which the CKAN is accessible from the DSC.
-        if resource.service_accessURL is None:
-            internal_resource_url = transform_url_internal_network(value["url"])
-        else:
-            internal_resource_url = resource.service_accessURL
 
         if resource.artifact_iri is None:
-            artifact = local_resource_dataspace_connector.create_artifact(
-                data={"accessUrl": internal_resource_url})
-            local_resource_dataspace_connector.add_artifact_to_representation(
+            artifact = local_dsc_api.create_artifact(
+                data=artifact_metadata)
+            local_dsc_api.add_artifact_to_representation(
                 representation, artifact)
         else:
-            local_resource_dataspace_connector.update_artifact(
+            local_dsc_api.update_artifact(
                 resource.artifact_iri,
-                data={"accessUrl": internal_resource_url})
+                data=artifact_metadata)
             artifact = resource.artifact_iri
 
         if "id" in value:
@@ -228,7 +240,6 @@ def push_to_dataspace_connector(data):
             patch_data = {"id": value["id"], "representation": representation,
                           "artifact": artifact}
             logic.action.patch.resource_patch(context, data_dict=patch_data)
-
 
     changed_extras = [{"key": "catalog", "value": catalog},
                       {"key": "offers", "value": offers}]
@@ -245,14 +256,15 @@ def push_to_dataspace_connector(data):
     return True
 
 
-def transform_url_internal_network(url : str,
-                                   container_name : str ="local-ckan",
-                                   container_port : str = "5000"):
+def transform_url_internal_network(url: str,
+                                   container_name: str = "local-ckan",
+                                   container_port: str = "5000"):
     site_url = str(toolkit.config.get('ckan.site_url'))
-    internal_url = "http://"+container_name+":"+str(container_port)
+    internal_url = "http://" + container_name + ":" + str(container_port)
     if site_url.endswith("/"):
         internal_url += "/"
-    return url.replace(site_url,internal_url)
+    return url.replace(site_url, internal_url)
+
 
 def delete_from_dataspace_connector(data):
     c = plugins.toolkit.g
@@ -351,9 +363,9 @@ def publish_action(id):
 
     c.pkg_dict = dataset
     contract_meta = request.data
-    #logging.error("\n\n\n\n\n\n\n...................... CONTRACT META \n")
-    #logging.error(json.dumps(contract_meta,indent=1))
-    #logging.error("......................\n\n\n\n\n\n\n")
+    # logging.error("\n\n\n\n\n\n\n...................... CONTRACT META \n")
+    # logging.error(json.dumps(contract_meta,indent=1))
+    # logging.error("......................\n\n\n\n\n\n\n")
     # create the contract
     contract_id = local_connector_resource_api.create_contract(
         {
@@ -439,8 +451,8 @@ def contracts(id, offering_info=None, errors=None):
         c.pkg_dict = dataset
         possible_contracts = [sub for sub in dataset["extras"]
                               if sub['key'] == 'contract_meta']
-        if len(possible_contracts)>0:
-            contract = json.loads(next(possible_contracts)["value"])
+        if len(possible_contracts) > 0:
+            contract = json.loads(next(iter(possible_contracts))["value"])
             c.contracts = [contract]
 
     return toolkit.render('package/contracts.html',
@@ -459,6 +471,7 @@ def contract_accept():
         "resourceId"   : "ht...",
         "artifactId"   : "ht...",
         "contractId"   : "htt..."
+        "brokerResourceId" : "htt....."
     }
     """
     data = clean_dict(
@@ -466,27 +479,40 @@ def contract_accept():
     if data["provider_url"] is None or len(data["provider_url"]) < 1:
         providing_base_url = "/".join(data["resourceId"].split("/")[:3])
         data["provider_url"] = providing_base_url
-    log.debug("data to contract_accept------\n"+json.dumps(data,indent=2))
     local_connector = Connector()
-    local_connector_resource_api = local_connector.get_resource_api()
+    local_dsc_api = local_connector.get_resource_api()
     # get the description of the contract
-    contract = local_connector_resource_api.descriptionRequest(
+
+    log.debug(":-:-:-:-:- -----  Description Request  ------ "
+              "-:-:-:-:-:-: to" + data['provider_url'] + "/api/ids/data")
+    contract = local_dsc_api.descriptionRequest(
         data['provider_url'] + "/api/ids/data", data['contractId'])
-    # get the rules as an array
-    obj = contract["ids:permission"]
-    # add the artifact id as the target in rules
-    # FIXME: what if there are more than one artifacts?
-    for item in obj:
-        item["ids:target"] = data["artifactId"]
-    # FIXME: this will return an agreement object. What to do with it? It is needed to consume the resource
-    # negotiate contract
+
+    graphs = local_connector.ask_broker_for_description(
+        element_uri=data["brokerResourceId"])
+    remote_artifacts = graphs_to_artifacts(graphs)
+
+    # Attempt at multiplying permission ---------------------------
+    allperms = []
+    for arti_num, artifact in enumerate(remote_artifacts):
+        newperms = copy.deepcopy(contract["ids:permission"])
+        for item in newperms:
+            item["ids:target"] = artifact
+            item["@id"] += "_" + str(arti_num)
+        allperms += newperms
+
+    artifactparm = remote_artifacts
+    permparam = allperms
+    resource_param = [data['resourceId'] for _ in artifactparm]
+
     try:
-        agreement_response = local_connector_resource_api.contractRequest(
+        agreement_response = local_dsc_api.contractRequest(
             data['provider_url'] + "/api/ids/data",
-            data['resourceId'],
-            data['artifactId'],
+            resource_param,
+            artifactparm,  # data['artifactId'],
             False,
-            obj)
+            permparam)  # obj)
+
         local_resource = IdsResource.get(data['resourceId'])
         if local_resource == None:
             local_resource = IdsResource(data['resourceId'])
@@ -498,37 +524,35 @@ def contract_accept():
                                        user="admin")
         local_agreement.save()
 
-        log.debug("\n\n\n------- Getting Resources After Agreement "
-                  "--------------\n"
-                  "--------------------------------------------------------")
-
         log.debug("agreement_uri :\t" + local_agreement_uri)
 
-
-
-        artifacts = \
-            local_connector_resource_api.get_artifacts_for_agreement(local_agreement_uri)
+        local_artifacts = \
+            local_dsc_api.get_artifacts_for_agreement(
+                local_agreement_uri)
         first_artifact = \
-        artifacts["_embedded"]["artifacts"][0]["_links"]["self"]["href"]
+            local_artifacts["_embedded"]["artifacts"][0]["_links"]["self"][
+                "href"]
         log.debug("artifact_uri :\t" + first_artifact)
 
-#        data_response = local_connector_resource_api.get_data(first_artifact)
-#        size_data = len(data_response.content)
-#        log.debug("size_of_data :\t" + str(size_data))
-#        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-#        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-#        log.debug("\n\n\n\n\n")
-
-        return agreement_response
-        # resource = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['resourceId'])
-        # package = broker_client._to_ckan_package(resource)
-
-        # create_external_package(package)
-
-        # in case of success create the resource on local and add the agreement and other meta on extra
     except IOError as e:
         log.error(e)
         base.abort(500, e)
+
+    #        data_response = local_connector_resource_api.get_data(first_artifact)
+    #        size_data = len(data_response.content)
+    #        log.debug("size_of_data :\t" + str(size_data))
+    #        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    #        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    #        log.debug("\n\n\n\n\n")
+
+    return agreement_response
+    # resource = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['resourceId'])
+    # package = broker_client._to_ckan_package(resource)
+
+    # create_external_package(package)
+
+    # in case of success create the resource on local and add the agreement and other meta on extra
+
 
 # endpoint to accept a contract offer
 @ids_actions.route('/ids/actions/get_data', methods=['GET'])
@@ -536,9 +560,9 @@ def get_data():
     dscurl = config.get("ckanext.ids.trusts_local_dataspace_connector_url")
     dscport = str(config.get(
         "ckanext.ids.trusts_local_dataspace_connector_port"))
-    basedscurl = dscurl+":"+dscport
+    basedscurl = dscurl + ":" + dscport
 
-    url = basedscurl+"/api/artifacts/"+request.args.get(
+    url = basedscurl + "/api/artifacts/" + request.args.get(
         "artifact_id")
     local_connector = Connector()
     local_connector_resource_api = local_connector.get_resource_api()
@@ -614,6 +638,13 @@ def contracts_remote():
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
 
+    # ToDo For now it assumes the DSC is accessible in the same hostname
+    # as the CKAN, but with port 8282
+    _dscbaseurl = config.get("ckan.site_url")
+    _dsc_hostname = urlsplit(_dscbaseurl).hostname.split(":")[0]
+    basedscurl = _dsc_hostname + ":8282"
+    log.error("-:-:-:-:--------------------------------------->\n\n\n")
+
     # Ger from broker info for this ID
     resource_uri = request.args.get("uri")
     local_connector = Connector()
@@ -625,49 +656,67 @@ def contracts_remote():
     dataset = graphs_to_ckan_result_format(graphs)
 
     c.pkg_dict = dataset
-    contracts = graphs_to_contracts(graphs)
+    contracts = graphs_to_contracts(graphs,
+                                    broker_resource_uri=resource_uri)
 
     c.contracts = contracts
-
 
     # Here we get the local agreements, if they exist
     # --------------------------------------------------------------------
     resourceId = dataset["id"]
     local_resource = IdsResource.get(resourceId)
+    # log.debug(json.dumps(dataset,indent=1))
+    # log.debug("\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n\n\n")
 
     try:
-        local_agreements  = local_resource.get_agreements()
+        local_agreements = local_resource.get_agreements()
     except AttributeError:
         local_agreements = []
 
+    local_dsc_API = local_connector.get_resource_api()
     local_artifacts = []
     for local_agreement in local_agreements:
         if local_agreement is not None:
             site_url = str(toolkit.config.get('ckan.site_url'))
-            local_connector_resource_api = local_connector.get_resource_api()
-            artifacts = local_connector_resource_api.get_artifacts_for_agreement(
-                    local_agreement.id)
-            #log.debug("\n~~~~~~~~~~~")
-            #log.debug("agreement_uri: \t"+local_agreement.id)
+
+            artifacts = local_dsc_API.get_artifacts_for_agreement(
+                local_agreement.id)
+            log.debug("~~~~~~~~~~~\n|~\n|~\n|~")
+            log.debug("\tagreement_uri: \t" + local_agreement.id)
             if "_embedded" in artifacts.keys():
                 for ar in artifacts["_embedded"]["artifacts"]:
+
                     artifacturi = ar["_links"]["self"]["href"]
 
                     artifactuuid = artifacturi.split("/")[-1]
-                    accessurl = \
-                        site_url+"/ids/actions/get_data?artifact_id=" \
-                                 ""+artifactuuid
+                    arttitle = ar["title"] if len(
+                        ar["title"]) > 0 else artifactuuid
+                    artdesc = ar["description"]
 
-                    artifact_description = {"url" : accessurl}
-                    artifact_description["title"] = artifactuuid
-                    artifact_description["description"] = ""
-                    if "title" in ar.keys() and len(ar["title"])>0:
+                    if "service_base_access_url" in arttitle:
+                        url = basedscurl + "/api/artifacts/" + artifactuuid
+                        accessurl = url + "/data"
+                    else:
+                        accessurl = \
+                            site_url + "/ids/actions/get_data?artifact_id=" \
+                                       "" + artifactuuid
+
+                    log.debug("\t|\n\t\n\t|~~~~~~~~~~~>")
+                    log.debug("\t\tartifact_uri :\t" + artifacturi)
+                    log.debug("\t\taccessurl: \t" + accessurl)
+                    log.debug("\t\ttitle: \t" + arttitle)
+                    log.debug("\t\tdescription: \t" + artdesc)
+
+                    artifact_description = {"url": accessurl}
+                    artifact_description["title"] = arttitle
+                    artifact_description["description"] = artdesc
+                    if "title" in ar.keys() and len(ar["title"]) > 0:
                         artifact_description["title"] = ar["title"]
-                    if "description" in ar.keys() and len(ar["description"])>0:
+                    if "description" in ar.keys() and len(
+                            ar["description"]) > 0:
                         artifact_description["description"] = ar["description"]
 
                     local_artifacts.append(artifact_description)
-                    #log.debug("artifact_uri :\t" + artifacturi)
 
     if len(local_artifacts):
         c.local_artifacts = local_artifacts
