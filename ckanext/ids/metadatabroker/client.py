@@ -99,22 +99,23 @@ def _sparl_get_all_resources(resource_type: str,
     query = """
       PREFIX owl: <http://www.w3.org/2002/07/owl#>
       PREFIX ids: <https://w3id.org/idsa/core/>
-      SELECT ?resultUri ?type ?title ?description ?assettype ?externalname WHERE
+      SELECT ?resultUri ?type ?title ?description ?assettype ?externalname 
+      WHERE
       { ?resultUri a ?type . 
         ?conn <https://w3id.org/idsa/core/offeredResource> ?resultUri .
         ?resultUri ids:title ?title .
         ?resultUri ids:description ?description .
         ?resultUri owl:sameAs ?externalname .
         #FILTER NOT EXISTS { ?conn owl:sameAs """ + catalogiri + """ }
-    
         """
     if resource_type is None or resource_type == "None":
         query += "\n ?resultUri " + URI(type_pred).n3() + " ?assettype."
     else:
         typeuri = URI("https://www.trusts-data.eu/ontology/" + \
                       resource_type.capitalize())
-        query += "\n ?resultUri " + URI(type_pred).n3() + typeuri.n3() + "."
-        query += "BIND( " + typeuri.n3() + " AS ?assettype) ."
+        query += "\n ?resultUri " + URI(
+            type_pred).n3() + " " + typeuri.n3() + "."
+        query += "\nBIND( " + typeuri.n3() + " AS ?assettype) ."
     query += "\n}"
     return query
 
@@ -162,7 +163,14 @@ def get_resource_type(type):
         raise ValueError("Uknown dataset type: " + type + " Mapping failed.")
 
 
-def graphs_to_contracts(raw_jsonld: Dict):
+def graphs_to_artifacts(raw_jsonld: Dict):
+    g = raw_jsonld["@graph"]
+    artifact_graphs = [x for x in g if x["@type"] == "ids:Artifact"]
+    return [x["sameAs"] for x in artifact_graphs]
+
+
+def graphs_to_contracts(raw_jsonld: Dict,
+                        broker_resource_uri: str):
     g = raw_jsonld["@graph"]
     contract_graphs = [x for x in g if x["@type"] == "ids:ContractOffer"]
     resource_graphs = [x for x in g if x["@type"] == "ids:Resource"]
@@ -186,12 +194,14 @@ def graphs_to_contracts(raw_jsonld: Dict):
                 "-", "_")} for per in perms]
         r["contract_start"] = cg["contractStart"]
         r["contract_end"] = cg["contractEnd"]
-        r["title"] = resource_graphs[0]["title"]
+        r["title"] = clean_multilang(resource_graphs[0]["title"])
         r["errors"] = {}
         r["provider_url"] = providing_base_url
         r["resourceId"] = resource_uri
         r["artifactId"] = artifact_graphs[0]["sameAs"]
+        r["artifactIds"] = [x["sameAs"] for x in artifact_graphs]
         r["contractId"] = cg["sameAs"]
+        r["brokerResourceUri"] = broker_resource_uri
 
         results.append(r)
 
@@ -219,7 +229,7 @@ def create_moot_ckan_result(resultUri: str,
     if externalname.startswith("<") and externalname.endswith(">"):
         externalname = externalname[1:-1]
 
-    #log.error("MOOT RESULT FOR " + resultUri + "\t" + title + "~~~~~~~~~~")
+    # log.error("MOOT RESULT FOR " + resultUri + "\t" + title + "~~~~~~~~~~")
     theirname = externalname
     organization_name = theirname.split("/")[2].split(":")[0]
     providing_base_url = "/".join(organization_name.split("/")[:3])
@@ -313,6 +323,14 @@ def create_moot_ckan_result(resultUri: str,
     return packagemeta
 
 
+def clean_multilang(astring: str):
+    if isinstance(astring, str):
+        return astring
+    if isinstance(astring, dict) and "@value" in astring.keys():
+        return str(astring["@value"])
+    return str(astring)
+
+
 def graphs_to_ckan_result_format(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
     resource_graphs = [x for x in g if x["@type"] == "ids:Resource"]
@@ -352,8 +370,8 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
         "standardLicense"] if "standardLicense" in resource_graphs[0] else None
     packagemeta["metadata_created"] = resource_graphs[0]["created"]
     packagemeta["metadata_modified"] = resource_graphs[0]["modified"]
-    packagemeta["name"] = resource_graphs[0]["title"]
-    packagemeta["title"] = resource_graphs[0]["title"]
+    packagemeta["name"] = clean_multilang(resource_graphs[0]["title"])
+    packagemeta["title"] = clean_multilang(resource_graphs[0]["title"])
     packagemeta["type"] = resource_graphs[0]["asset_type"].split("/")[
         -1].lower()
     packagemeta["theme"] = resource_graphs[0]["theme"].split("/")[-1]
@@ -387,25 +405,27 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
     packagemeta[packagemeta["type"] + "count"] = 1
 
     for rg in representation_graphs:
+        artifact_this_res = [x for x in artifact_graphs
+                             if x["@id"] == rg["instance"]][0]
         empty_ckan_resource = {
-            "artifact": rg["instance"],
+            "artifact": artifact_this_res["@id"],
             "cache_last_updated": None,
             "cache_url": None,
             "created": resource_graphs[0]["created"],
-            "description": resource_graphs[0]["description"],
+            "description": clean_multilang(resource_graphs[0]["description"]),
             "format": "EXTERNAL",
-            "hash": artifact_graphs[0]["checkSum"],
+            "hash": artifact_this_res["checkSum"],
             "id": rg["@id"],
             "last_modified": resource_graphs[0]["modified"],
             "metadata_modified": rg["modified"],
             "mimetype": rg["mediaType"],
             "mimetype_inner": None,
-            "name": resource_graphs[0]["title"],
+            "name": artifact_this_res["fileName"],
             "package_id": resource_graphs[0]["sameAs"],
             "position": 0,
             "representation": rg["sameAs"],
             "resource_type": "resource",
-            "size": artifact_graphs[0]["ids:byteSize"],
+            "size": artifact_this_res["ids:byteSize"],
             "state": "active",
             "url": rg["sameAs"],
             "url_type": "upload"
@@ -462,8 +482,10 @@ def broker_package_search(q=None, start_offset=0, fq=None):
                 search_results.append(pm)
 
     else:
-        log.debug("Default search activated---- type:"+str(requested_type))
+
         general_query = _sparl_get_all_resources(resource_type=requested_type)
+        log.debug("Default search activated---- type:" + str(requested_type))
+        log.debug("QUERY :\n\t" + str(general_query).replace("\n", "\n\t"))
         raw_response = connector.query_broker(general_query)
 
         parsed_response = _parse_broker_tabular_response(raw_response)

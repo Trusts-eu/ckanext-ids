@@ -7,6 +7,7 @@ import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 from ckan.common import config
 from ckan.lib.plugins import DefaultTranslation
+from ckanext.ids.validator import trusts_url_validator
 
 import ckanext.ids.blueprints as blueprints
 from ckanext.ids.metadatabroker.client import broker_package_search
@@ -20,6 +21,12 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IOrganizationController, inherit=True)
     plugins.implements(plugins.ITranslation)
+    plugins.implements(plugins.IValidators)
+
+    def get_validators(self):
+        return {
+            "trusts_url_validator": trusts_url_validator
+        }
 
     from ckanext.ids.model import setup as db_setup
 

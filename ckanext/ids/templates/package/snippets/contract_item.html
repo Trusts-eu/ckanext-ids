@@ -37,7 +37,7 @@
     {% block accept_contract_action %}
         {% if 'external_provider_name' in pkg %}
             <button
-                    onclick="acceptContract('{{contract.providing_base_url}}', '{{ contract.resourceId }}', '{{ contract.artifactId }}', '{{ contract.contractId }}' )">Accept Contract</button>
+                    onclick="acceptContract('{{contract.providing_base_url}}', '{{ contract.resourceId }}', '{{ contract.artifactId }}', '{{ contract.contractId }}' , '{{contract.brokerResourceUri}}' )">Accept Contract</button>
         {% endif %}
     {% endblock %}
 </li>

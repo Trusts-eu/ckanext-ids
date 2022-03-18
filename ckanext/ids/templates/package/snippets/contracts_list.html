@@ -35,12 +35,13 @@ Example:
 </section>
 
 <script>
-    function acceptContract(providerUrl, resourceId, artifactId, contractId) {
+    function acceptContract(providerUrl, resourceId, artifactId, contractId,brokerResourceId) {
         var data = {
             provider_url: providerUrl,
             resourceId: resourceId,
             artifactId: artifactId,
-            contractId: contractId
+            contractId: contractId,
+            brokerResourceId: brokerResourceId,
         }
         sendData(data)
     }
