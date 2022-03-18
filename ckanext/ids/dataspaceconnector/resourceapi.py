@@ -77,6 +77,12 @@ class ResourceApi:
         response = self.session.delete(data.representation_iri, json=data)
         return response.status_code == 204
 
+    def get_artifact(self, url):
+        response = self.session.get(url)
+        print("GETting artifact:", response.status_code,
+              "url:", url)
+        return json.loads(response.text)
+
     def create_artifact(self, data={"value": "SOME LONG VALUE"}):
         response = self.session.post(self.recipient + "/api/artifacts", json=data)
         location = response.headers["Location"]
