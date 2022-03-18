@@ -1,5 +1,6 @@
 from six.moves.urllib.parse import urlparse
 import string
+from ckan.common import _
 from ckanext.scheming.validation import register_validator, scheming_validator
 
 @register_validator

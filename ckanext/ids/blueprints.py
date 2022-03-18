@@ -557,23 +557,22 @@ def contract_accept():
 # endpoint to accept a contract offer
 @ids_actions.route('/ids/actions/get_data', methods=['GET'])
 def get_data():
-    dscurl = config.get("ckanext.ids.trusts_local_dataspace_connector_url")
-    dscport = str(config.get(
-        "ckanext.ids.trusts_local_dataspace_connector_port"))
-    basedscurl = dscurl + ":" + dscport
 
-    url = basedscurl + "/api/artifacts/" + request.args.get(
-        "artifact_id")
     local_connector = Connector()
     local_connector_resource_api = local_connector.get_resource_api()
 
+    url = local_connector_resource_api.recipient + "/api/artifacts/" + request.args.get(
+        "artifact_id")
+    ## get filename
+    filename = local_connector_resource_api.get_artifact(url)["title"]
     data_response = local_connector_resource_api.get_data(url)
-    return Response(
+    response = Response(
         stream_with_context(data_response.iter_content(chunk_size=1024)),
         content_type=data_response.headers.get("Content-Type"),
         status=data_response.status_code
     )
-
+    response.headers["Content-Disposition"] = "attachment;filename="+filename
+    return response
 
 def create_external_package(data):
     # get clean data from the form, data will hold the common meta for all resources
