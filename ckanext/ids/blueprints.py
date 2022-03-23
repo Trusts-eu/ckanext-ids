@@ -260,13 +260,13 @@ def push_to_dataspace_connector(data):
 
         #dtheiler start
         recomm_store_publish_interaction(
-            c.userobj.id, #userId
             offer.offer_iri, #entityId
             data["type"]) #entityType
         #dtheiler end
     else:
         log.error("This resource doesn't have any contracts, not pushing to "
                   "broker")
+
     return True
 
 
@@ -479,16 +479,8 @@ def contracts(id, offering_info=None, errors=None):
 def store_download_interaction():
 
     data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
-
-    c = plugins.toolkit.g
-    local_connector = Connector()
-    entityGraphs = local_connector.ask_broker_for_description(element_uri=data['entityId'])
-    entity = graphs_to_ckan_result_format(entityGraphs)
-
-    recomm_store_download_interaction(
-        c.userobj.id, #userId
-        entity["id"], #entityId
-        entity["type"]) #entityType
+ 
+    recomm_store_download_interaction(data['entityId'])
     
     return "true"
 #dtheiler end
@@ -512,20 +504,8 @@ def contract_accept():
     if data["provider_url"] is None or len(data["provider_url"]) < 1:
         providing_base_url = "/".join(data["resourceId"].split("/")[:3])
         data["provider_url"] = providing_base_url
+        
     local_connector = Connector()
-    
-    #dtheiler start
-    c = plugins.toolkit.g
-    entityGraphs = local_connector.ask_broker_for_description(element_uri=data['resourceId'])
-    entity = graphs_to_ckan_result_format(entityGraphs)
-
-    recomm_store_accept_contract_interaction(
-        c.userobj.id, #userId
-        entity["id"], #entityId
-        entity["type"]) #entityType
-     
-    #dtheiler end
-
     local_dsc_api = local_connector.get_resource_api()        
     # get the description of the contract
 
@@ -591,6 +571,10 @@ def contract_accept():
     #        log.debug("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     #        log.debug("\n\n\n\n\n")
 
+    #dtheiler start
+    recomm_store_accept_contract_interaction(data['resourceId'])
+    #dtheiler end
+    
     return agreement_response
     # resource = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['resourceId'])
     # package = broker_client._to_ckan_package(resource)
@@ -716,7 +700,6 @@ def contracts_remote():
     
     #dtheiler start
     recomm_store_view_interaction(
-        c.userobj.id, #userId
         dataset["id"], #entityId 
         dataset["type"]) #entityType
     #dtheiler end
