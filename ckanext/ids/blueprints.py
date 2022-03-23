@@ -28,6 +28,13 @@ from ckanext.ids.metadatabroker.client import graphs_to_ckan_result_format
 from ckanext.ids.metadatabroker.client import graphs_to_contracts
 from ckanext.ids.model import IdsResource, IdsAgreement
 
+#dtheiler start
+from ckanext.ids.recomm.recomm import recomm_store_view_interaction
+from ckanext.ids.recomm.recomm import recomm_store_accept_contract_interaction
+from ckanext.ids.recomm.recomm import recomm_store_publish_interaction
+from ckanext.ids.recomm.recomm import recomm_store_download_interaction
+#dtheiler end
+
 tuplize_dict = logic.tuplize_dict
 clean_dict = logic.clean_dict
 parse_params = logic.parse_params
@@ -250,6 +257,13 @@ def push_to_dataspace_connector(data):
     if any(dictionary.get('key', '') == 'contract' for dictionary in extras):
         # push to the broker if the package has a contract
         local_connector.send_resource_to_broker(resource_uri=offer.offer_iri)
+
+        #dtheiler start
+        recomm_store_publish_interaction(
+            c.userobj.id, #userId
+            offer.offer_iri, #entityId
+            data["type"]) #entityType
+        #dtheiler end
     else:
         log.error("This resource doesn't have any contracts, not pushing to "
                   "broker")
@@ -460,6 +474,24 @@ def contracts(id, offering_info=None, errors=None):
                               u'pkg_dict': dataset
                           })
 
+#dtheiler start
+@ids_actions.route('/ids/actions/store_download_interaction', methods=['POST'])
+def store_download_interaction():
+
+    data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
+
+    c = plugins.toolkit.g
+    local_connector = Connector()
+    entityGraphs = local_connector.ask_broker_for_description(element_uri=data['entityId'])
+    entity = graphs_to_ckan_result_format(entityGraphs)
+
+    recomm_store_download_interaction(
+        c.userobj.id, #userId
+        entity["id"], #entityId
+        entity["type"]) #entityType
+    
+    return "true"
+#dtheiler end
 
 # endpoint to accept a contract offer
 @ids_actions.route('/ids/actions/contract_accept', methods=['POST'])
@@ -474,13 +506,27 @@ def contract_accept():
         "brokerResourceId" : "htt....."
     }
     """
+    
     data = clean_dict(
         dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
     if data["provider_url"] is None or len(data["provider_url"]) < 1:
         providing_base_url = "/".join(data["resourceId"].split("/")[:3])
         data["provider_url"] = providing_base_url
     local_connector = Connector()
-    local_dsc_api = local_connector.get_resource_api()
+    
+    #dtheiler start
+    c = plugins.toolkit.g
+    entityGraphs = local_connector.ask_broker_for_description(element_uri=data['resourceId'])
+    entity = graphs_to_ckan_result_format(entityGraphs)
+
+    recomm_store_accept_contract_interaction(
+        c.userobj.id, #userId
+        entity["id"], #entityId
+        entity["type"]) #entityType
+     
+    #dtheiler end
+
+    local_dsc_api = local_connector.get_resource_api()        
     # get the description of the contract
 
     log.debug(":-:-:-:-:- -----  Description Request  ------ "
@@ -552,6 +598,7 @@ def contract_accept():
     # create_external_package(package)
 
     # in case of success create the resource on local and add the agreement and other meta on extra
+
 
 
 # endpoint to accept a contract offer
@@ -666,7 +713,14 @@ def contracts_remote():
     local_resource = IdsResource.get(resourceId)
     # log.debug(json.dumps(dataset,indent=1))
     # log.debug("\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n\n\n")
-
+    
+    #dtheiler start
+    recomm_store_view_interaction(
+        c.userobj.id, #userId
+        dataset["id"], #entityId 
+        dataset["type"]) #entityType
+    #dtheiler end
+    
     try:
         local_agreements = local_resource.get_agreements()
     except AttributeError:
