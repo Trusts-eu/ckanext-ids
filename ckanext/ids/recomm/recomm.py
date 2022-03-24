@@ -13,10 +13,13 @@ import requests
 log = logging.getLogger("ckanext")
 
 #recomm service setup
-data_ingestion_host=config.get("ckanext.ids.trusts_local_dataspace_connector_url")
+host=config.get("ckanext.ids.trusts_local_dataspace_connector_url")
 data_ingestion_port="9090"
+service_provider_port="9092"
 store_interaction_path="/trusts/interaction/store"
-interaction_ingestion_url=data_ingestion_host + ":" + data_ingestion_port + store_interaction_path
+recomm_dataset_to_user_path="/trusts/reco/ruc1/dataset-user"
+interaction_ingestion_url=host + ":" + data_ingestion_port + store_interaction_path
+recomm_dataset_to_user_url=host + ":" + service_provider_port + recomm_dataset_to_user_path
 
 #request headers
 headers={"Content-type": "application/json", "accept": "application/json;charset=UTF-8"}
@@ -33,7 +36,33 @@ accept_contract_interaction_type="accept_contract"
 view_interaction_type="view"
 
 def recomm_recomm_datasets_homepage():
-    return ["Dataset 10", "Dataset 20", "Dataset 30"]
+    
+    userId = plugins.toolkit.g.userobj.id
+    
+    params = {
+        "userId": userId, 
+        "count": "3",
+        "algo": "MP"
+    }
+    
+    response = requests.get(
+        url=recomm_dataset_to_user_url, 
+        params=params,
+        headers=headers)
+
+    if response.status_code == 200:
+        recomm_log("Sucessfully recommended datasets for user: " + userId)
+        
+        datasetTitles = []
+        
+        for result in response.json()["results"]:
+            datasetTitles.append(result["title"])
+            
+        return datasetTitles
+
+    if response.status_code > 200 or response.text is None:
+        recomm_log("Failed to recommended datasets for user: " + userId);
+        return []
 
 def recomm_recomm_services_homepage():
     return ["Service 10", "Service 20", "Service 30"]
@@ -48,17 +77,11 @@ def recomm_store_download_interaction(
     
     if entity is None:
         return False
-    
-    interactionType = recomm_get_interaction_type(
-        entity["type"],
-        download_interaction_type)
-    
-    if interactionType == download_interaction_type:
-        return False
-    
+
     data = {
         "entityId": entity["id"],
-        "type": interactionType, 
+        "entityType": entity["type"],
+        "type": download_interaction_type, 
         "userId": plugins.toolkit.g.userobj.id
     }
     
@@ -79,16 +102,10 @@ def recomm_store_publish_interaction(
     entityId: str, 
     entityType: str):
     
-    interactionType = recomm_get_interaction_type(
-        entityType,
-        publish_interaction_type)
-    
-    if interactionType == publish_interaction_type:
-        return False
-    
     data = {
-        "entityId": entityId, 
-        "type": interactionType, 
+        "entityId": entityId,
+        "entityType": entityType,
+        "type": publish_interaction_type, 
         "userId": plugins.toolkit.g.userobj.id
     }
     
@@ -113,16 +130,10 @@ def recomm_store_accept_contract_interaction(
     if entity is None:
         return False
         
-    interactionType = recomm_get_interaction_type(
-        entity["type"],
-        accept_contract_interaction_type)
-    
-    if interactionType == accept_contract_interaction_type:
-        return False
-    
     data = {
-        "entityId": entity["id"], 
-        "type": interactionType, 
+        "entityId": entity["id"],
+        "entityType": entity["type"],
+        "type": accept_contract_interaction_type, 
         "userId": plugins.toolkit.g.userobj.id
     }
     
@@ -143,16 +154,10 @@ def recomm_store_view_interaction(
     entityId: str, 
     entityType: str):
     
-    interactionType = recomm_get_interaction_type(
-        entityType,
-        view_interaction_type)
-    
-    if interactionType == view_interaction_type:
-        return False
-    
     data = {
         "entityId": entityId, 
-        "type": interactionType, 
+        "entityType": entityType,
+        "type": view_interaction_type, 
         "userId": plugins.toolkit.g.userobj.id
     }
     
@@ -185,18 +190,18 @@ def recomm_retrieve_entity(
         recomm_log("Failed to retrieve entity: " + entityId)
         return None    
 
-def recomm_get_interaction_type(
-    entityType: str,
-    interactionType: str):
-    
-    if entityType == type_dataset:
-        interactionType += "_" + type_dataset
-    if entityType == type_service:
-        interactionType += "_" + type_service
-    if entityType == type_application:
-        interactionType += "_" + type_application
-    
-    return interactionType
+#def recomm_get_interaction_type(
+#    entityType: str,
+#    interactionType: str):
+#    
+#    if entityType == type_dataset:
+#        interactionType += "_" + type_dataset
+#    if entityType == type_service:
+#        interactionType += "_" + type_service
+#    if entityType == type_application:
+#        interactionType += "_" + type_application
+#    
+#    return interactionType
     
 def recomm_log(
     logMessage: str):
