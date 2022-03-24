@@ -32,6 +32,15 @@ publish_interaction_type="publish"
 accept_contract_interaction_type="accept_contract"
 view_interaction_type="view"
 
+def recomm_recomm_datasets_homepage():
+    return ["Dataset 10", "Dataset 20", "Dataset 30"]
+
+def recomm_recomm_services_homepage():
+    return ["Service 10", "Service 20", "Service 30"]
+    
+def recomm_recomm_applications_homepage():
+    return ["Application 10", "Application 20", "Application 30"]
+
 def recomm_store_download_interaction(
     entityId: str):
     

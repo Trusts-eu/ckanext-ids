@@ -12,9 +12,25 @@ from ckanext.ids.validator import trusts_url_validator
 import ckanext.ids.blueprints as blueprints
 from ckanext.ids.metadatabroker.client import broker_package_search
 
+#dtheiler start
+from ckanext.ids.recomm.recomm import recomm_recomm_datasets_homepage
+from ckanext.ids.recomm.recomm import recomm_recomm_services_homepage
+from ckanext.ids.recomm.recomm import recomm_recomm_applications_homepage
+#dtheiler end
+
 # ToDo make sure this logger is set higher
 log = logging.getLogger("ckanext")
 
+#dtheiler start
+def recomm_datasets_homepage():
+    return recomm_recomm_datasets_homepage()
+
+def recomm_services_homepage():
+    return recomm_recomm_services_homepage()
+
+def recomm_applications_homepage():
+    return recomm_recomm_applications_homepage()
+#dtheiler end
 
 class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     log.debug("\n................ Plugin Init 5................\n+")
@@ -22,7 +38,21 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.IOrganizationController, inherit=True)
     plugins.implements(plugins.ITranslation)
     plugins.implements(plugins.IValidators)
-
+    
+    #dtheiler start
+    plugins.implements(plugins.ITemplateHelpers)
+    
+    def get_helpers(self):
+    
+        # Template helper function names should begin with the name of the
+        # extension they belong to, to avoid clashing with functions from
+        # other extensions.
+        return {
+            'ckanext_ids_recomm_datasets_homepage': recomm_datasets_homepage, 
+            'ckanext_ids_recomm_services_homepage': recomm_services_homepage, 
+            'ckanext_ids_recomm_applications_homepage': recomm_applications_homepage}   
+    #dtheiler end
+    
     def get_validators(self):
         return {
             "trusts_url_validator": trusts_url_validator
@@ -133,7 +163,7 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         package_meta = toolkit.get_action("package_show")(None, {
             "id": pkg_dict["id"]})
         blueprints.delete_from_dataspace_connector(package_meta)
-
+        
 
 # The following code is an example of how we can implement a plugin that performs an action on a specific event.
 # The event is a package read event, show it will be activated whenever a package is read ie. opening the URL of a

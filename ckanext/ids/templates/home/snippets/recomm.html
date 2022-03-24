@@ -1,6 +1,6 @@
-{% set datasets = ["Dataset 1", "Dataset 2", "Dataset 3"] %}
-{% set services = ["Service 1", "Service 2", "Service 3"] %}
-{% set applications = ["Application 1", "Application 2", "Application 3"] %}
+{% set datasets = h.ckanext_ids_recomm_datasets_homepage() %}
+{% set services = h.ckanext_ids_recomm_services_homepage() %}
+{% set applications = h.ckanext_ids_recomm_applications_homepage() %}
 
 <div class="module module-search module-narrow module-shallow box">
 
