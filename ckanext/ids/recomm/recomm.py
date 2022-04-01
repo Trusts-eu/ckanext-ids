@@ -18,8 +18,12 @@ data_ingestion_port="9090"
 service_provider_port="9092"
 store_interaction_path="/trusts/interaction/store"
 recomm_dataset_to_user_path="/trusts/reco/ruc1/dataset-user"
+recomm_service_to_user_path="/trusts/reco/ruc2/service-user"
+recomm_application_to_user_path="/trusts/reco/ruc2/application-user"
 interaction_ingestion_url=host + ":" + data_ingestion_port + store_interaction_path
 recomm_dataset_to_user_url=host + ":" + service_provider_port + recomm_dataset_to_user_path
+recomm_service_to_user_url=host + ":" + service_provider_port + recomm_service_to_user_path
+recomm_application_to_user_url=host + ":" + service_provider_port + recomm_application_to_user_path
 
 #request headers
 headers={"Content-type": "application/json", "accept": "application/json;charset=UTF-8"}
@@ -65,10 +69,62 @@ def recomm_recomm_datasets_homepage():
         return []
 
 def recomm_recomm_services_homepage():
-    return ["Service 10", "Service 20", "Service 30"]
+
+    userId = plugins.toolkit.g.userobj.id
+    
+    params = {
+        "userId": userId, 
+        "count": "3",
+        "algo": "MP"
+    }
+    
+    response = requests.get(
+        url=recomm_service_to_user_url, 
+        params=params,
+        headers=headers)
+
+    if response.status_code == 200:
+        recomm_log("Sucessfully recommended services for user: " + userId)
+        
+        serviceTitles = []
+        
+        for result in response.json()["results"]:
+            serviceTitles.append(result["title"])
+            
+        return serviceTitles
+
+    if response.status_code > 200 or response.text is None:
+        recomm_log("Failed to recommended services for user: " + userId);
+        return []
     
 def recomm_recomm_applications_homepage():
-    return ["Application 10", "Application 20", "Application 30"]
+    
+    userId = plugins.toolkit.g.userobj.id
+    
+    params = {
+        "userId": userId, 
+        "count": "3",
+        "algo": "MP"
+    }
+    
+    response = requests.get(
+        url=recomm_application_to_user_url, 
+        params=params,
+        headers=headers)
+
+    if response.status_code == 200:
+        recomm_log("Sucessfully recommended applications for user: " + userId)
+        
+        applicationTitles = []
+        
+        for result in response.json()["results"]:
+            applicationTitles.append(result["title"])
+            
+        return applicationTitles
+
+    if response.status_code > 200 or response.text is None:
+        recomm_log("Failed to recommended applications for user: " + userId);
+        return []
 
 def recomm_store_download_interaction(
     entityId: str):
