@@ -12,7 +12,7 @@
 			<h4 style="font-size:16px;">Datasets</h4>
 			{% for dataset in datasets %}
 				<div class="row">
-					<a href="{{ dataset }} ">{{ dataset }}</a>
+					<a href="{{ dataset['id'] }} ">{{ dataset['title'] }}</a>
 				</div>
 			{% endfor %}
 		</div>
@@ -22,7 +22,7 @@
 			<div class="search-input form-group search-giant">
 				{% for service in services %}
 					<div class="row">
-						<a href="{{ service }} ">{{ service }}</a>
+						<a href="{{ service['id'] }} ">{{ service['title'] }}</a>
 					</div>
 				{% endfor %}
 			</div>
@@ -33,7 +33,7 @@
 			<div class="search-input form-group search-giant">
 				{% for application in applications %}
 					<div class="row">
-						<a href="{{ application }} ">{{ application }}</a>
+						<a href="{{ application['id'] }} ">{{ application['title'] }}</a>
 					</div>
 				{% endfor %}
 			</div>

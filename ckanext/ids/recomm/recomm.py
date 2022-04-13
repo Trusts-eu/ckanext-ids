@@ -9,35 +9,159 @@ from typing import Set, List, Dict
 from ckan.common import config
 import requests
 
+import urllib.parse
+
 #logger
 log = logging.getLogger("ckanext")
 
 #recomm service setup
 host=config.get("ckanext.ids.trusts_local_dataspace_connector_url")
+ckan_url= config.get("ckan.site_url") #config.get("ckanext.ids.trusts_local_dataspace_connector_port")
+
 data_ingestion_port="9090"
 service_provider_port="9092"
+
+process_external_url = ckan_url + "/ids/processExternal?uri="
+
 store_interaction_path="/trusts/interaction/store"
+
+interaction_ingestion_url=host + ":" + data_ingestion_port + store_interaction_path
+
+recomm_application_to_user_path="/trusts/reco/ruc2/application-user"
 recomm_dataset_to_user_path="/trusts/reco/ruc1/dataset-user"
 recomm_service_to_user_path="/trusts/reco/ruc2/service-user"
-recomm_application_to_user_path="/trusts/reco/ruc2/application-user"
-interaction_ingestion_url=host + ":" + data_ingestion_port + store_interaction_path
+
+recomm_application_to_application_path="/trusts/reco/ruc6/application-application"
+recomm_application_to_dataset_path="/trusts/reco/ruc4/application-dataset"
+recomm_application_to_service_path="/trusts/reco/ruc6/application-service"
+
+recomm_dataset_to_application_path="/trusts/reco/ruc3/dataset-application"
+recomm_dataset_to_dataset_path="/trusts/reco/ruc5/dataset-dataset"
+recomm_dataset_to_service_path="/trusts/reco/ruc3/dataset-service"
+
+recomm_service_to_application_path="/trusts/reco/ruc6/service-application"
+recomm_service_to_dataset_path="/trusts/reco/ruc4/service-dataset"
+recomm_service_to_service_path="/trusts/reco/ruc6/service-service"
+
 recomm_dataset_to_user_url=host + ":" + service_provider_port + recomm_dataset_to_user_path
 recomm_service_to_user_url=host + ":" + service_provider_port + recomm_service_to_user_path
 recomm_application_to_user_url=host + ":" + service_provider_port + recomm_application_to_user_path
+
+recomm_application_to_application_url=host + ":" + service_provider_port + recomm_application_to_application_path
+recomm_application_to_dataset_url=host + ":" + service_provider_port + recomm_application_to_dataset_path
+recomm_application_to_service_url=host + ":" + service_provider_port + recomm_application_to_service_path
+
+recomm_dataset_to_application_url=host + ":" + service_provider_port + recomm_dataset_to_application_path
+recomm_dataset_to_dataset_url=host + ":" + service_provider_port + recomm_dataset_to_dataset_path
+recomm_dataset_to_service_url=host + ":" + service_provider_port + recomm_dataset_to_service_path
+
+recomm_service_to_application_url=host + ":" + service_provider_port + recomm_service_to_application_path
+recomm_service_to_dataset_url=host + ":" + service_provider_port + recomm_service_to_dataset_path
+recomm_service_to_service_url=host + ":" + service_provider_port + recomm_service_to_service_path
 
 #request headers
 headers={"Content-type": "application/json", "accept": "application/json;charset=UTF-8"}
 
 #entity types
+type_application="application"
 type_dataset="dataset"
 type_service="service"
-type_application="application"
 
 #interaction types
 download_interaction_type="download"
 publish_interaction_type="publish"
 accept_contract_interaction_type="accept_contract"
 view_interaction_type="view"
+
+def recomm_recomm_applications_sidebar(
+    entity):
+    
+    userId = plugins.toolkit.g.userobj.id
+    
+    params = get_recomm_sidebar_params(
+        userId, 
+        entity)
+        
+    url = get_recomm_applications_sidebar_url(
+        entity['type'])
+        
+    if 'userId' not in params:
+        recomm_log("Failed to recommended applications for " + entity['type'] + ": " + entity['id'])
+        return []
+    
+    response = requests.get(
+        url=url, 
+        params=params,
+        headers=headers)
+
+    if response.status_code == 200:
+        recomm_log("Sucessfully recommended applications for " + entity['type'] + ": " + entity['id'])
+
+        return format_results(response.json()["results"])
+
+    if response.status_code > 200 or response.text is None:
+        recomm_log("Failed to recommended applications for " + entity['type'] + ": " + entity['id'])
+        return []
+
+def recomm_recomm_datasets_sidebar(
+    entity):
+    
+    userId = plugins.toolkit.g.userobj.id
+    
+    params = get_recomm_sidebar_params(
+        userId, 
+        entity)
+        
+    url = get_recomm_datasets_sidebar_url(
+        entity['type'])
+        
+    if 'userId' not in params:
+        recomm_log("Failed to recommended datasets for " + entity['type'] + ": " + entity['id'])
+        return []
+    
+    response = requests.get(
+        url=url, 
+        params=params,
+        headers=headers)
+
+    if response.status_code == 200:
+        recomm_log("Sucessfully recommended datasets for " + entity['type'] + ": " + entity['id'])
+        
+        return format_results(response.json()["results"])
+
+    if response.status_code > 200 or response.text is None:
+        recomm_log("Failed to recommended datasets for " + entity['type'] + ": " + entity['id'])
+        return []
+        
+def recomm_recomm_services_sidebar(
+    entity):
+    
+    userId = plugins.toolkit.g.userobj.id
+    
+    params = get_recomm_sidebar_params(
+        userId, 
+        entity)
+        
+    url = get_recomm_services_sidebar_url(
+        entity['type'])
+    
+    if 'userId' not in params:
+        recomm_log("Failed to recommended services for " + entity['type'] + ": " + entity['id'])
+        return []
+    
+    response = requests.get(
+        url=url, 
+        params=params,
+        headers=headers)
+
+    if response.status_code == 200:
+        recomm_log("Sucessfully recommended services for " + entity['type'] + ": " + entity['id'])
+        
+        return format_results(response.json()["results"])
+
+    if response.status_code > 200 or response.text is None:
+        recomm_log("Failed to recommended services for " + entity['type'] + ": " + entity['id'])
+        return []
 
 def recomm_recomm_datasets_homepage():
     
@@ -57,12 +181,7 @@ def recomm_recomm_datasets_homepage():
     if response.status_code == 200:
         recomm_log("Sucessfully recommended datasets for user: " + userId)
         
-        datasetTitles = []
-        
-        for result in response.json()["results"]:
-            datasetTitles.append(result["title"])
-            
-        return datasetTitles
+        return format_results(response.json()["results"])
 
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to recommended datasets for user: " + userId);
@@ -86,12 +205,7 @@ def recomm_recomm_services_homepage():
     if response.status_code == 200:
         recomm_log("Sucessfully recommended services for user: " + userId)
         
-        serviceTitles = []
-        
-        for result in response.json()["results"]:
-            serviceTitles.append(result["title"])
-            
-        return serviceTitles
+        return format_results(response.json()["results"])
 
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to recommended services for user: " + userId);
@@ -115,12 +229,7 @@ def recomm_recomm_applications_homepage():
     if response.status_code == 200:
         recomm_log("Sucessfully recommended applications for user: " + userId)
         
-        applicationTitles = []
-        
-        for result in response.json()["results"]:
-            applicationTitles.append(result["title"])
-            
-        return applicationTitles
+        return format_results(response.json()["results"])
 
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to recommended applications for user: " + userId);
@@ -269,3 +378,86 @@ def recomm_log(
     log.info("-------------------------");
     
     return True
+
+def get_recomm_sidebar_params(
+    userId:str,
+    entity):
+    
+    if(entity['type'] == type_application):
+        return {
+            "userId": userId, 
+            "applicationId": entity['id'],
+            "count": "3",
+            "algo": "MP"
+        }
+        
+    if(entity['type'] == type_dataset):
+        return {
+            "userId": userId, 
+            "datasetId": entity['id'],
+            "count": "3",
+            "algo": "MP"
+        }
+        
+    if(entity['type'] == type_service):
+        return {
+            "userId": userId, 
+            "serviceId": entity['id'],
+            "count": "3",
+            "algo": "MP"
+        }  
+            
+    return {}
+    
+def get_recomm_applications_sidebar_url(
+    entityType:str):
+    
+    if(entityType == type_application):
+        return recomm_application_to_application_url
+        
+    if(entityType == type_dataset):
+        return recomm_application_to_dataset_url
+        
+    if(entityType == type_service):
+        return recomm_application_to_service_url
+
+    return ""
+
+def get_recomm_datasets_sidebar_url(
+    entityType:str):
+    
+    if(entityType == type_application):
+        return recomm_dataset_to_application_url
+        
+    if(entityType == type_dataset):
+        return recomm_dataset_to_dataset_url
+        
+    if(entityType == type_service):
+        return recomm_dataset_to_service_url
+
+    return ""
+
+def get_recomm_services_sidebar_url(
+    entityType:str):
+    
+    if(entityType == type_application):
+        return recomm_service_to_application_url
+        
+    if(entityType == type_dataset):
+        return recomm_service_to_dataset_url
+        
+    if(entityType == type_service):
+        return recomm_service_to_service_url
+
+    return ""
+
+
+def format_results(results):
+
+    entities = []
+        
+    for result in results:
+        result['id'] = process_external_url + urllib.parse.quote_plus(result['id'])
+        entities.append(result)
+
+    return entities

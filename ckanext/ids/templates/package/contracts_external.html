@@ -23,6 +23,9 @@ super() }}{% endblock %}
         </div>
     </section>
 
+	{% block recomm_entity_sidebar %}
+		{% snippet 'package/snippets/recomm_entity_sidebar.html', entity=g.pkg_dict %}
+	{% endblock %}
 {% endblock %}
 
 

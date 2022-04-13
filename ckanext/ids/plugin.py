@@ -16,6 +16,10 @@ from ckanext.ids.metadatabroker.client import broker_package_search
 from ckanext.ids.recomm.recomm import recomm_recomm_datasets_homepage
 from ckanext.ids.recomm.recomm import recomm_recomm_services_homepage
 from ckanext.ids.recomm.recomm import recomm_recomm_applications_homepage
+
+from ckanext.ids.recomm.recomm import recomm_recomm_applications_sidebar
+from ckanext.ids.recomm.recomm import recomm_recomm_datasets_sidebar
+from ckanext.ids.recomm.recomm import recomm_recomm_services_sidebar
 #dtheiler end
 
 # ToDo make sure this logger is set higher
@@ -30,6 +34,15 @@ def recomm_services_homepage():
 
 def recomm_applications_homepage():
     return recomm_recomm_applications_homepage()
+    
+def recomm_applications_sidebar(entity):
+    return recomm_recomm_applications_sidebar(entity)
+    
+def recomm_datasets_sidebar(entity):
+    return recomm_recomm_datasets_sidebar(entity)
+
+def recomm_services_sidebar(entity):
+    return recomm_recomm_services_sidebar(entity)    
 #dtheiler end
 
 class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
@@ -50,7 +63,11 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         return {
             'ckanext_ids_recomm_datasets_homepage': recomm_datasets_homepage, 
             'ckanext_ids_recomm_services_homepage': recomm_services_homepage, 
-            'ckanext_ids_recomm_applications_homepage': recomm_applications_homepage}   
+            'ckanext_ids_recomm_applications_homepage': recomm_applications_homepage, 
+            'ckanext_ids_recomm_applications_sidebar': recomm_applications_sidebar, 
+            'ckanext_ids_recomm_datasets_sidebar': recomm_datasets_sidebar, 
+            'ckanext_ids_recomm_services_sidebar': recomm_services_sidebar 
+            }   
     #dtheiler end
     
     def get_validators(self):
