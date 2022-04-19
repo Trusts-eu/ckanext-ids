@@ -169,8 +169,7 @@ def recomm_recomm_datasets_homepage():
     
     params = {
         "userId": userId, 
-        "count": "3",
-        "algo": "MP"
+        "count": "3"
     }
     
     response = requests.get(
@@ -193,8 +192,7 @@ def recomm_recomm_services_homepage():
     
     params = {
         "userId": userId, 
-        "count": "3",
-        "algo": "MP"
+        "count": "3"
     }
     
     response = requests.get(
@@ -217,8 +215,7 @@ def recomm_recomm_applications_homepage():
     
     params = {
         "userId": userId, 
-        "count": "3",
-        "algo": "MP"
+        "count": "3"
     }
     
     response = requests.get(
@@ -387,24 +384,21 @@ def get_recomm_sidebar_params(
         return {
             "userId": userId, 
             "applicationId": entity['id'],
-            "count": "3",
-            "algo": "MP"
+            "count": "3"
         }
         
     if(entity['type'] == type_dataset):
         return {
             "userId": userId, 
             "datasetId": entity['id'],
-            "count": "3",
-            "algo": "MP"
+            "count": "3"
         }
         
     if(entity['type'] == type_service):
         return {
             "userId": userId, 
             "serviceId": entity['id'],
-            "count": "3",
-            "algo": "MP"
+            "count": "3"
         }  
             
     return {}
