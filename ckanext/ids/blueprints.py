@@ -33,6 +33,8 @@ from ckanext.ids.recomm.recomm import recomm_store_view_interaction
 from ckanext.ids.recomm.recomm import recomm_store_accept_contract_interaction
 from ckanext.ids.recomm.recomm import recomm_store_publish_interaction
 from ckanext.ids.recomm.recomm import recomm_store_download_interaction
+from ckanext.ids.recomm.recomm import recomm_store_view_recomm_interaction
+
 #dtheiler end
 
 tuplize_dict = logic.tuplize_dict
@@ -483,6 +485,15 @@ def store_download_interaction():
     recomm_store_download_interaction(data['entityId'])
     
     return "true"
+    
+@ids_actions.route('/ids/actions/store_view_recomm_interaction', methods=['POST'])
+def store_view_recomm_interaction():
+
+    data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
+ 
+    recomm_store_view_recomm_interaction(data['entityId'], data['recoId'])
+    
+    return "true"    
 #dtheiler end
 
 # endpoint to accept a contract offer

@@ -4,7 +4,7 @@
 
 	{{super()}}
 
-	{% if query %}
+	{% if query and count==0 %}
 		
 		{% if type == 'dataset' %}
 			{% set recomms = h.ckanext_ids_recomm_datasets_homepage() %}
@@ -27,7 +27,7 @@
 					<div style="float:left; width:100%;">
 						{% for recomm in recomms %}
 							<div class="row">
-								<a href="{{ recomm['id'] }} ">{{ recomm['title'] }}</a>
+								<a onclick="storeRecommClick( '{{ recomm['pkg_id'] }}', '{{ recomm['recoId'] }}' );" href="{{ recomm['id'] }} ">{{ recomm['title'] }}</a>
 							</div>
 						{% endfor %}
 					</div>
@@ -36,5 +36,36 @@
 		{% endif %}
 		
 	{% endif %}
-  
+    
+<script>
+    function storeRecommClick(entityId, recoId) {
+         
+        const XHR = new XMLHttpRequest(),
+        FD  = new FormData();
+
+		var data = {
+		  entityId: entityId, 
+		  recoId: recoId
+		};
+		
+		for( name in data ) {
+            FD.append( name, data[ name ] );
+        }
+
+        XHR.addEventListener( 'load', function( event ) {
+			return true;
+        } );
+
+        XHR.addEventListener(' error', function( event ) {
+            console.log("failed to store view recomm interaction");
+			return true;
+        } );
+
+        XHR.open( 'POST', '/ids/actions/store_view_recomm_interaction' );
+		XHR.send( FD );
+		
+		return true;
+    }
+</script>	
+
 {% endblock %}

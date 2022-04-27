@@ -69,6 +69,7 @@ type_service="service"
 
 #interaction types
 download_interaction_type="download"
+view_recomm_interaction_type="view_recomm"
 publish_interaction_type="publish"
 accept_contract_interaction_type="accept_contract"
 view_interaction_type="view"
@@ -97,7 +98,7 @@ def recomm_recomm_applications_sidebar(
     if response.status_code == 200:
         recomm_log("Sucessfully recommended applications for " + entity['type'] + ": " + entity['id'])
 
-        return format_results(response.json()["results"])
+        return format_results(response)
 
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to recommended applications for " + entity['type'] + ": " + entity['id'])
@@ -127,7 +128,7 @@ def recomm_recomm_datasets_sidebar(
     if response.status_code == 200:
         recomm_log("Sucessfully recommended datasets for " + entity['type'] + ": " + entity['id'])
         
-        return format_results(response.json()["results"])
+        return format_results(response)
 
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to recommended datasets for " + entity['type'] + ": " + entity['id'])
@@ -157,7 +158,7 @@ def recomm_recomm_services_sidebar(
     if response.status_code == 200:
         recomm_log("Sucessfully recommended services for " + entity['type'] + ": " + entity['id'])
         
-        return format_results(response.json()["results"])
+        return format_results(response)
 
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to recommended services for " + entity['type'] + ": " + entity['id'])
@@ -180,7 +181,7 @@ def recomm_recomm_datasets_homepage():
     if response.status_code == 200:
         recomm_log("Sucessfully recommended datasets for user: " + userId)
         
-        return format_results(response.json()["results"])
+        return format_results(response)
 
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to recommended datasets for user: " + userId);
@@ -203,7 +204,7 @@ def recomm_recomm_services_homepage():
     if response.status_code == 200:
         recomm_log("Sucessfully recommended services for user: " + userId)
         
-        return format_results(response.json()["results"])
+        return format_results(response)
 
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to recommended services for user: " + userId);
@@ -226,7 +227,7 @@ def recomm_recomm_applications_homepage():
     if response.status_code == 200:
         recomm_log("Sucessfully recommended applications for user: " + userId)
         
-        return format_results(response.json()["results"])
+        return format_results(response)
 
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to recommended applications for user: " + userId);
@@ -259,6 +260,36 @@ def recomm_store_download_interaction(
     if response.status_code > 200 or response.text is None:
         recomm_log("Failed to store download interaction for: " + entityId);
         return False
+        
+def recomm_store_view_recomm_interaction(
+    entityId: str, 
+    recoId: str):
+    
+    entity = recomm_retrieve_entity(entityId)
+    
+    if entity is None:
+        return False
+
+    data = {
+        "entityId": entity["id"],
+        "entityType": entity["type"],
+        "type": view_recomm_interaction_type, 
+        "userId": plugins.toolkit.g.userobj.id, 
+        "recommenderId": recoId
+    }
+    
+    response = requests.post(
+        url=interaction_ingestion_url,
+        json=data,
+        headers=headers)
+
+    if response.status_code == 200:
+        recomm_log("Sucessfully stored view recomm interaction for: " + entityId);
+        return True
+
+    if response.status_code > 200 or response.text is None:
+        recomm_log("Failed to store view recomm interaction for: " + entityId);
+        return False        
 
 def recomm_store_publish_interaction(
     entityId: str, 
@@ -445,13 +476,17 @@ def get_recomm_services_sidebar_url(
 
     return ""
 
+def format_results(response):
 
-def format_results(results):
-
+    jsonResponse = response.json()
     entities = []
         
-    for result in reversed(results):
+    for result in reversed(jsonResponse["results"]):
+        
+        result['pkg_id'] = result['id']
         result['id'] = process_external_url + urllib.parse.quote_plus(result['id'])
+        result['recoId'] = jsonResponse["reco_id"]
+        
         entities.append(result)
 
     return entities

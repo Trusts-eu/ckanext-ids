@@ -15,7 +15,7 @@
 					<h4 style="font-size:16px;">Datasets</h4>
 					{% for dataset in datasets %}
 						<div class="row">
-							<a href="{{ dataset['id'] }} ">{{ dataset['title'] }}</a>
+							<a onclick="storeRecommClick( '{{ dataset['pkg_id'] }}', '{{ dataset['recoId'] }}' );" href="{{ dataset['id'] }} ">{{ dataset['title'] }}</a>
 						</div>
 					{% endfor %}
 				</div>
@@ -27,7 +27,7 @@
 					<div class="search-input form-group search-giant">
 						{% for service in services %}
 							<div class="row">
-								<a href="{{ service['id'] }} ">{{ service['title'] }}</a>
+								<a onclick="storeRecommClick( '{{ service['pkg_id'] }}', '{{ service['recoId'] }}' );" href="{{ service['id'] }} ">{{ service['title'] }}</a>
 							</div>
 						{% endfor %}
 					</div>
@@ -40,7 +40,7 @@
 					<div class="search-input form-group search-giant">
 						{% for application in applications %}
 							<div class="row">
-								<a href="{{ application['id'] }} ">{{ application['title'] }}</a>
+								<a onclick="storeRecommClick( '{{ application['pkg_id'] }}', '{{ application['recoId'] }}' );" href="{{ application['id'] }} ">{{ application['title'] }}</a>
 							</div>
 						{% endfor %}
 					</div>
@@ -50,3 +50,34 @@
 		</div>
 	</div>
 {% endif %}
+
+<script>
+    function storeRecommClick(entityId, recoId) {
+         
+        const XHR = new XMLHttpRequest(),
+        FD  = new FormData();
+
+		var data = {
+		  entityId: entityId, 
+		  recoId: recoId
+		};
+		
+		for( name in data ) {
+            FD.append( name, data[ name ] );
+        }
+
+        XHR.addEventListener( 'load', function( event ) {
+			return true;
+        } );
+
+        XHR.addEventListener(' error', function( event ) {
+            console.log("failed to store view recomm interaction");
+			return true;
+        } );
+
+        XHR.open( 'POST', '/ids/actions/store_view_recomm_interaction' );
+		XHR.send( FD );
+		
+		return true;
+    }
+</script>
