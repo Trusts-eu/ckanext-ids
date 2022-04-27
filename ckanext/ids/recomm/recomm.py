@@ -450,7 +450,7 @@ def format_results(results):
 
     entities = []
         
-    for result in results:
+    for result in reversed(results):
         result['id'] = process_external_url + urllib.parse.quote_plus(result['id'])
         entities.append(result)
 

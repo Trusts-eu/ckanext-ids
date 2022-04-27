@@ -2,41 +2,46 @@
 {% set services = h.ckanext_ids_recomm_services_sidebar(entity) %}
 {% set applications = h.ckanext_ids_recomm_applications_sidebar(entity) %}
 
-<div class="module module-search module-narrow module-shallow box">
+{% if datasets or services or applications %}
 
-	<div class="module-content" style="display:table; text-align:center; width:100%;">
-		
-		<h3 class="heading">Recommendations</h3>
-		
-		<div>
-			<h4 style="font-size:16px;">Datasets</h4>
-			{% for dataset in datasets %}
-				<div class="row">
-					<a href="{{ dataset['id'] }} ">{{ dataset['title'] }}</a>
+	<div class="module module-search module-narrow module-shallow box">
+
+		<div class="module-content" style="display:table; text-align:center; width:100%;">
+			
+			<h3 class="heading">Recommendations</h3>
+			
+			{% if datasets %}
+				<div>
+					<h4 style="font-size:16px;">Datasets</h4>
+					{% for dataset in datasets %}
+						<div class="row">
+							<a href="{{ dataset['id'] }} ">{{ dataset['title'] }}</a>
+						</div>
+					{% endfor %}
 				</div>
-			{% endfor %}
-		</div>
-		
-		<div>
-			<h4 style="font-size:16px;">Services</h4>
-			<div class="search-input form-group search-giant">
-				{% for service in services %}
-					<div class="row">
-						<a href="{{ service['id'] }} ">{{ service['title'] }}</a>
-					</div>
-				{% endfor %}
-			</div>
-		</div>
+			{% endif %}
+			
+			{% if services %}
+				<div>
+					<h4 style="font-size:16px;">Services</h4>
+					{% for service in services %}
+						<div class="row">
+							<a href="{{ service['id'] }} ">{{ service['title'] }}</a>
+						</div>
+					{% endfor %}
+				</div>
+			{% endif %}
 
-		<div>
-			<h4 style="font-size:16px;">Applications</h4>
-			<div class="search-input form-group search-giant">
-				{% for application in applications %}
-					<div class="row">
-						<a href="{{ application['id'] }} ">{{ application['title'] }}</a>
-					</div>
-				{% endfor %}
-			</div>
+			{% if applications %}
+				<div>
+					<h4 style="font-size:16px;">Applications</h4>
+					{% for application in applications %}
+						<div class="row">
+							<a href="{{ application['id'] }} ">{{ application['title'] }}</a>
+						</div>
+					{% endfor %}
+				</div>
+			{% endif %}	
 		</div>
 	</div>
-</div>
+{% endif %}
