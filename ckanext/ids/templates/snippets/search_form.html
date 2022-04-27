@@ -1,0 +1,40 @@
+{% ckan_extends %}
+
+{% block search_input %}
+
+	{{super()}}
+
+	{% if query %}
+		
+		{% if type == 'dataset' %}
+			{% set recomms = h.ckanext_ids_recomm_datasets_homepage() %}
+		{% endif %}
+ 
+		{% if type == 'service' %}
+			{% set recomms = h.ckanext_ids_recomm_services_homepage() %}
+		{% endif %}  
+ 
+		{% if type == 'application' %}
+			{% set recomms = h.ckanext_ids_recomm_applications_homepage() %}
+		{% endif %}  
+  
+		{% if recomms %}
+			<div>
+				<div style="display:inline-block; text-align:center; width:100%;">
+					
+					<h3 class="heading">Recommended {{type}}s </h3>
+					
+					<div style="float:left; width:100%;">
+						{% for recomm in recomms %}
+							<div class="row">
+								<a href="{{ recomm['id'] }} ">{{ recomm['title'] }}</a>
+							</div>
+						{% endfor %}
+					</div>
+				</div>
+			</div>
+		{% endif %}
+		
+	{% endif %}
+  
+{% endblock %}
