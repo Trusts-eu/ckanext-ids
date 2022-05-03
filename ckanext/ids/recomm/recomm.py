@@ -15,17 +15,21 @@ import urllib.parse
 log = logging.getLogger("ckanext")
 
 #recomm service setup
-host=config.get("ckanext.ids.trusts_local_dataspace_connector_url")
+recomm_di_host="http://recomm-di"
+recomm_sp_host="http://recomm-sp" #config.get("ckanext.ids.trusts_local_dataspace_connector_url")
+
 ckan_url= config.get("ckan.site_url") #config.get("ckanext.ids.trusts_local_dataspace_connector_port")
 
 data_ingestion_port="9090"
 service_provider_port="9092"
 
+service_provider_path=recomm_sp_host + ":" + service_provider_port
+
 process_external_url = ckan_url + "/ids/processExternal?uri="
 
 store_interaction_path="/trusts/interaction/store"
 
-interaction_ingestion_url=host + ":" + data_ingestion_port + store_interaction_path
+interaction_ingestion_url=recomm_di_host + ":" + data_ingestion_port + store_interaction_path
 
 recomm_application_to_user_path="/trusts/reco/ruc2/application-user"
 recomm_dataset_to_user_path="/trusts/reco/ruc1/dataset-user"
@@ -43,21 +47,21 @@ recomm_service_to_application_path="/trusts/reco/ruc6/service-application"
 recomm_service_to_dataset_path="/trusts/reco/ruc4/service-dataset"
 recomm_service_to_service_path="/trusts/reco/ruc6/service-service"
 
-recomm_dataset_to_user_url=host + ":" + service_provider_port + recomm_dataset_to_user_path
-recomm_service_to_user_url=host + ":" + service_provider_port + recomm_service_to_user_path
-recomm_application_to_user_url=host + ":" + service_provider_port + recomm_application_to_user_path
+recomm_dataset_to_user_url=service_provider_path + recomm_dataset_to_user_path
+recomm_service_to_user_url=service_provider_path + recomm_service_to_user_path
+recomm_application_to_user_url=service_provider_path + recomm_application_to_user_path
 
-recomm_application_to_application_url=host + ":" + service_provider_port + recomm_application_to_application_path
-recomm_application_to_dataset_url=host + ":" + service_provider_port + recomm_application_to_dataset_path
-recomm_application_to_service_url=host + ":" + service_provider_port + recomm_application_to_service_path
+recomm_application_to_application_url=service_provider_path + recomm_application_to_application_path
+recomm_application_to_dataset_url=service_provider_path + recomm_application_to_dataset_path
+recomm_application_to_service_url=service_provider_path + recomm_application_to_service_path
 
-recomm_dataset_to_application_url=host + ":" + service_provider_port + recomm_dataset_to_application_path
-recomm_dataset_to_dataset_url=host + ":" + service_provider_port + recomm_dataset_to_dataset_path
-recomm_dataset_to_service_url=host + ":" + service_provider_port + recomm_dataset_to_service_path
+recomm_dataset_to_application_url=service_provider_path + recomm_dataset_to_application_path
+recomm_dataset_to_dataset_url=service_provider_path + recomm_dataset_to_dataset_path
+recomm_dataset_to_service_url=service_provider_path + recomm_dataset_to_service_path
 
-recomm_service_to_application_url=host + ":" + service_provider_port + recomm_service_to_application_path
-recomm_service_to_dataset_url=host + ":" + service_provider_port + recomm_service_to_dataset_path
-recomm_service_to_service_url=host + ":" + service_provider_port + recomm_service_to_service_path
+recomm_service_to_application_url=service_provider_path + recomm_service_to_application_path
+recomm_service_to_dataset_url=service_provider_path + recomm_service_to_dataset_path
+recomm_service_to_service_url=service_provider_path + recomm_service_to_service_path
 
 #request headers
 headers={"Content-type": "application/json", "accept": "application/json;charset=UTF-8"}
@@ -188,6 +192,8 @@ def recomm_recomm_datasets_homepage():
             "userId": userId, 
             "count": "3"
         }
+        
+        recomm_log("RECOMM URL | " + recomm_dataset_to_user_url)
         
         response = requests.get(
             url=recomm_dataset_to_user_url, 
