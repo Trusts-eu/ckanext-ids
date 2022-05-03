@@ -77,296 +77,350 @@ view_interaction_type="view"
 def recomm_recomm_applications_sidebar(
     entity):
     
-    userId = plugins.toolkit.g.userobj.id
-    
-    params = get_recomm_sidebar_params(
-        userId, 
-        entity)
+    try:
+        userId = plugins.toolkit.g.userobj.id
         
-    url = get_recomm_applications_sidebar_url(
-        entity['type'])
+        params = get_recomm_sidebar_params(
+            userId,
+            entity)
+            
+        url = get_recomm_applications_sidebar_url(
+            entity['type'])
+            
+        if 'userId' not in params:
+            recomm_log("Failed to recommended applications for " + entity['type'] + ": " + entity['id'])
+            return []
         
-    if 'userId' not in params:
-        recomm_log("Failed to recommended applications for " + entity['type'] + ": " + entity['id'])
-        return []
-    
-    response = requests.get(
-        url=url, 
-        params=params,
-        headers=headers)
+        response = requests.get(
+            url=url, 
+            params=params,
+            headers=headers)
 
-    if response.status_code == 200:
-        recomm_log("Sucessfully recommended applications for " + entity['type'] + ": " + entity['id'])
+        if response.status_code == 200:
+            recomm_log("Sucessfully recommended applications for " + entity['type'] + ": " + entity['id'])
 
-        return format_results(response)
+            return format_results(response)
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to recommended applications for " + entity['type'] + ": " + entity['id'])
-        return []
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to recommended applications for " + entity['type'] + ": " + entity['id'])
+            return []
+        
+    except Exception as error:
+        recomm_log("Failed to recommended applications")
+        return []    
 
 def recomm_recomm_datasets_sidebar(
     entity):
     
-    userId = plugins.toolkit.g.userobj.id
-    
-    params = get_recomm_sidebar_params(
-        userId, 
-        entity)
+    try:
+        userId = plugins.toolkit.g.userobj.id
         
-    url = get_recomm_datasets_sidebar_url(
-        entity['type'])
+        params = get_recomm_sidebar_params(
+            userId, 
+            entity)
+            
+        url = get_recomm_datasets_sidebar_url(
+            entity['type'])
+            
+        if 'userId' not in params:
+            recomm_log("Failed to recommended datasets for " + entity['type'] + ": " + entity['id'])
+            return []
         
-    if 'userId' not in params:
-        recomm_log("Failed to recommended datasets for " + entity['type'] + ": " + entity['id'])
-        return []
-    
-    response = requests.get(
-        url=url, 
-        params=params,
-        headers=headers)
+        response = requests.get(
+            url=url, 
+            params=params,
+            headers=headers)
 
-    if response.status_code == 200:
-        recomm_log("Sucessfully recommended datasets for " + entity['type'] + ": " + entity['id'])
-        
-        return format_results(response)
+        if response.status_code == 200:
+            recomm_log("Sucessfully recommended datasets for " + entity['type'] + ": " + entity['id'])
+            
+            return format_results(response)
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to recommended datasets for " + entity['type'] + ": " + entity['id'])
-        return []
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to recommended datasets for " + entity['type'] + ": " + entity['id'])
+            return []
+            
+    except Exception as error:
+        recomm_log("Failed to recommended datasets")
+        return []        
         
 def recomm_recomm_services_sidebar(
     entity):
     
-    userId = plugins.toolkit.g.userobj.id
-    
-    params = get_recomm_sidebar_params(
-        userId, 
-        entity)
+    try:
+        userId = plugins.toolkit.g.userobj.id
         
-    url = get_recomm_services_sidebar_url(
-        entity['type'])
-    
-    if 'userId' not in params:
-        recomm_log("Failed to recommended services for " + entity['type'] + ": " + entity['id'])
-        return []
-    
-    response = requests.get(
-        url=url, 
-        params=params,
-        headers=headers)
-
-    if response.status_code == 200:
-        recomm_log("Sucessfully recommended services for " + entity['type'] + ": " + entity['id'])
+        params = get_recomm_sidebar_params(
+            userId, 
+            entity)
+            
+        url = get_recomm_services_sidebar_url(
+            entity['type'])
         
-        return format_results(response)
+        if 'userId' not in params:
+            recomm_log("Failed to recommended services for " + entity['type'] + ": " + entity['id'])
+            return []
+        
+        response = requests.get(
+            url=url, 
+            params=params,
+            headers=headers)
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to recommended services for " + entity['type'] + ": " + entity['id'])
-        return []
+        if response.status_code == 200:
+            recomm_log("Sucessfully recommended services for " + entity['type'] + ": " + entity['id'])
+            
+            return format_results(response)
+
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to recommended services for " + entity['type'] + ": " + entity['id'])
+            return []
+            
+    except Exception as error:
+        recomm_log("Failed to recommended services")
+        return []        
 
 def recomm_recomm_datasets_homepage():
     
-    userId = plugins.toolkit.g.userobj.id
-    
-    params = {
-        "userId": userId, 
-        "count": "3"
-    }
-    
-    response = requests.get(
-        url=recomm_dataset_to_user_url, 
-        params=params,
-        headers=headers)
-
-    if response.status_code == 200:
-        recomm_log("Sucessfully recommended datasets for user: " + userId)
+    try:
+        userId = plugins.toolkit.g.userobj.id
         
-        return format_results(response)
+        params = {
+            "userId": userId, 
+            "count": "3"
+        }
+        
+        response = requests.get(
+            url=recomm_dataset_to_user_url, 
+            params=params,
+            headers=headers)
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to recommended datasets for user: " + userId);
-        return []
+        if response.status_code == 200:
+            recomm_log("Sucessfully recommended datasets for user: " + userId)
+            
+            return format_results(response)
+
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to recommended datasets for user: " + userId)
+            return []
+    
+    except Exception as error:
+        recomm_log("Failed to recommended datasets for user")
+        return []           
 
 def recomm_recomm_services_homepage():
 
-    userId = plugins.toolkit.g.userobj.id
-    
-    params = {
-        "userId": userId, 
-        "count": "3"
-    }
-    
-    response = requests.get(
-        url=recomm_service_to_user_url, 
-        params=params,
-        headers=headers)
-
-    if response.status_code == 200:
-        recomm_log("Sucessfully recommended services for user: " + userId)
+    try:
+        userId = plugins.toolkit.g.userobj.id
         
-        return format_results(response)
+        params = {
+            "userId": userId, 
+            "count": "3"
+        }
+        
+        response = requests.get(
+            url=recomm_service_to_user_url, 
+            params=params,
+            headers=headers)
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to recommended services for user: " + userId);
-        return []
+        if response.status_code == 200:
+            recomm_log("Sucessfully recommended services for user: " + userId)
+            
+            return format_results(response)
+
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to recommended services for user: " + userId)
+            return []
+            
+    except Exception as error:
+        recomm_log("Failed to recommended services for user")
+        return []       
     
 def recomm_recomm_applications_homepage():
     
-    userId = plugins.toolkit.g.userobj.id
-    
-    params = {
-        "userId": userId, 
-        "count": "3"
-    }
-    
-    response = requests.get(
-        url=recomm_application_to_user_url, 
-        params=params,
-        headers=headers)
-
-    if response.status_code == 200:
-        recomm_log("Sucessfully recommended applications for user: " + userId)
+    try:
+        userId = plugins.toolkit.g.userobj.id
         
-        return format_results(response)
+        params = {
+            "userId": userId, 
+            "count": "3"
+        }
+        
+        response = requests.get(
+            url=recomm_application_to_user_url, 
+            params=params,
+            headers=headers)
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to recommended applications for user: " + userId);
-        return []
+        if response.status_code == 200:
+            recomm_log("Sucessfully recommended applications for user: " + userId)
+            
+            return format_results(response)
+
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to recommended applications for user: " + userId)
+            return []
+    
+    except Exception as error:
+        recomm_log("Failed to recommended applications for user")
+        return []    
 
 def recomm_store_download_interaction(
     entityId: str):
     
-    entity = recomm_retrieve_entity(entityId)
+    try:
+        entity = recomm_retrieve_entity(entityId)
+        
+        if entity is None:
+            return False
+
+        data = {
+            "entityId": entity["id"],
+            "entityType": entity["type"],
+            "type": download_interaction_type, 
+            "userId": plugins.toolkit.g.userobj.id
+        }
     
-    if entity is None:
-        return False
+        response = requests.post(
+            url=interaction_ingestion_url,
+            json=data,
+            headers=headers)
 
-    data = {
-        "entityId": entity["id"],
-        "entityType": entity["type"],
-        "type": download_interaction_type, 
-        "userId": plugins.toolkit.g.userobj.id
-    }
-    
-    response = requests.post(
-        url=interaction_ingestion_url,
-        json=data,
-        headers=headers)
+        if response.status_code == 200:
+            recomm_log("Sucessfully stored download interaction for: " + entityId)
+            return True
 
-    if response.status_code == 200:
-        recomm_log("Sucessfully stored download interaction for: " + entityId);
-        return True
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to store download interaction for: " + entityId)
+            return False
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to store download interaction for: " + entityId);
+    except Exception as error:
+        recomm_log("Failed to store download interaction")
         return False
         
 def recomm_store_view_recomm_interaction(
     entityId: str, 
     recoId: str):
     
-    entity = recomm_retrieve_entity(entityId)
-    
-    if entity is None:
-        return False
+    try:
+        entity = recomm_retrieve_entity(entityId)
+        
+        if entity is None:
+            return False
 
-    data = {
-        "entityId": entity["id"],
-        "entityType": entity["type"],
-        "type": view_recomm_interaction_type, 
-        "userId": plugins.toolkit.g.userobj.id, 
-        "recommenderId": recoId
-    }
-    
-    response = requests.post(
-        url=interaction_ingestion_url,
-        json=data,
-        headers=headers)
+        data = {
+            "entityId": entity["id"],
+            "entityType": entity["type"],
+            "type": view_recomm_interaction_type, 
+            "userId": plugins.toolkit.g.userobj.id, 
+            "recommenderId": recoId
+        }
+   
+        response = requests.post(
+            url=interaction_ingestion_url,
+            json=data,
+            headers=headers)
 
-    if response.status_code == 200:
-        recomm_log("Sucessfully stored view recomm interaction for: " + entityId);
-        return True
+        if response.status_code == 200:
+            recomm_log("Sucessfully stored view recomm interaction for: " + entityId)
+            return True
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to store view recomm interaction for: " + entityId);
-        return False        
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to store view recomm interaction for: " + entityId)
+            return False
+            
+    except Exception as error:
+        recomm_log("Failed to store view recomm interaction")
+        return False            
 
 def recomm_store_publish_interaction(
     entityId: str, 
     entityType: str):
     
-    data = {
-        "entityId": entityId,
-        "entityType": entityType,
-        "type": publish_interaction_type, 
-        "userId": plugins.toolkit.g.userobj.id
-    }
-    
-    response = requests.post(
-        url=interaction_ingestion_url,
-        json=data,
-        headers=headers)
+    try:
+        data = {
+            "entityId": entityId,
+            "entityType": entityType,
+            "type": publish_interaction_type, 
+            "userId": plugins.toolkit.g.userobj.id
+        }
+        
+        response = requests.post(
+            url=interaction_ingestion_url,
+            json=data,
+            headers=headers)
 
-    if response.status_code == 200:
-        recomm_log("Sucessfully stored publish interaction for: " + entityId);
-        return True
+        if response.status_code == 200:
+            recomm_log("Sucessfully stored publish interaction for: " + entityId)
+            return True
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to store publish interaction for: " + entityId);
-        return False
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to store publish interaction for: " + entityId)
+            return False
+            
+    except Exception as error:
+        recomm_log("Failed to store publish interaction")
+        return False    
 
 def recomm_store_accept_contract_interaction(
     entityId: str):
     
-    entity = recomm_retrieve_entity(entityId)
-    
-    if entity is None:
-        return False
+    try:
+        entity = recomm_retrieve_entity(entityId)
         
-    data = {
-        "entityId": entity["id"],
-        "entityType": entity["type"],
-        "type": accept_contract_interaction_type, 
-        "userId": plugins.toolkit.g.userobj.id
-    }
-    
-    response = requests.post(
-        url=interaction_ingestion_url,
-        json=data,
-        headers=headers)
+        if entity is None:
+            return False
+            
+        data = {
+            "entityId": entity["id"],
+            "entityType": entity["type"],
+            "type": accept_contract_interaction_type, 
+            "userId": plugins.toolkit.g.userobj.id
+        }
+        
+        response = requests.post(
+            url=interaction_ingestion_url,
+            json=data,
+            headers=headers)
 
-    if response.status_code == 200:
-        recomm_log("Sucessfully stored accept contract interaction for: " + entityId);
-        return True
+        if response.status_code == 200:
+            recomm_log("Sucessfully stored accept contract interaction for: " + entityId)
+            return True
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to store accept contract interaction for: " + entityId);
-        return False
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to store accept contract interaction for: " + entityId)
+            return False
+            
+    except Exception as error:
+        recomm_log("Failed to store accept contract interaction")
+        return False    
         
 def recomm_store_view_interaction(
     entityId: str, 
     entityType: str):
     
-    data = {
-        "entityId": entityId, 
-        "entityType": entityType,
-        "type": view_interaction_type, 
-        "userId": plugins.toolkit.g.userobj.id
-    }
+    try:
+        data = {
+            "entityId": entityId, 
+            "entityType": entityType,
+            "type": view_interaction_type, 
+            "userId": plugins.toolkit.g.userobj.id
+        }
     
-    response = requests.post(
-        url=interaction_ingestion_url,
-        json=data,
-        headers=headers)
+        response = requests.post(
+            url=interaction_ingestion_url,
+            json=data,
+            headers=headers)
 
-    if response.status_code == 200:
-        recomm_log("Sucessfully stored view interaction for: " + entityId);
-        return True
+        if response.status_code == 200:
+            recomm_log("Sucessfully stored view interaction for: " + entityId)
+            return True
 
-    if response.status_code > 200 or response.text is None:
-        recomm_log("Failed to store view interaction for: " + entityId);
-        return False
-        
+        if response.status_code > 200 or response.text is None:
+            recomm_log("Failed to store view interaction for: " + entityId)
+            return False
+            
+    except Exception as error:
+        recomm_log("Failed to store view interaction")
+        return False            
         
 def recomm_retrieve_entity(
     entityId: str):
