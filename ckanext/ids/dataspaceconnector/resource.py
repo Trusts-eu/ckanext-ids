@@ -31,7 +31,7 @@ class Resource(dict):
             self.title = resource_dict["name"]
         if 'title' in resource_dict:
             self.title = resource_dict["title"]
-        if 'resource_type' in resource_dict:
+        if 'resource_type' in resource_dict and resource_dict["resource_type"]:
             self.title = resource_dict["resource_type"] +"__"+ self.title
 
 

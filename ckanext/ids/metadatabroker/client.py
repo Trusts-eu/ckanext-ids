@@ -5,6 +5,7 @@ import urllib.parse
 from copy import deepcopy
 from typing import Set, List, Dict
 from urllib.parse import urlparse
+import json
 
 import ckan.lib.dictization
 import ckan.logic as logic
@@ -407,6 +408,8 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
     for rg in representation_graphs:
         artifact_this_res = [x for x in artifact_graphs
                              if x["@id"] == rg["instance"]][0]
+        #logging.error(json.dumps(artifact_this_res,indent=1)+
+        #              "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
         empty_ckan_resource = {
             "artifact": artifact_this_res["@id"],
             "cache_last_updated": None,
@@ -485,7 +488,7 @@ def broker_package_search(q=None, start_offset=0, fq=None):
 
         general_query = _sparl_get_all_resources(resource_type=requested_type)
         log.debug("Default search activated---- type:" + str(requested_type))
-        log.debug("QUERY :\n\t" + str(general_query).replace("\n", "\n\t"))
+        # log.debug("QUERY :\n\t" + str(general_query).replace("\n", "\n\t"))
         raw_response = connector.query_broker(general_query)
 
         parsed_response = _parse_broker_tabular_response(raw_response)

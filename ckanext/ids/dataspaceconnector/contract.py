@@ -1,10 +1,10 @@
-from ckan.common import _, config
-import ckan.lib.helpers as h
-import ckanext.scheming.helpers as sh
-import json
-
-import pytz
 import datetime
+import json
+import logging
+
+import ckan.lib.helpers as h
+import pytz
+from ckan.common import _, config
 
 
 class Contract:
@@ -18,6 +18,23 @@ class Contract:
     policies: []
 
     def __init__(self, contract_data):
+        """
+        contract_data is a dict that must contain the following keys:
+         `pkg_id` : the id of the ckan package
+         `title`  : the title of the contract
+         `contract_start_date`  : date of start of contract  iso
+         `contract_start_time`  : date of start of contract  iso format
+         `contract_start_tz`    : timezone of start, recongizable by pytz
+         `contract_end_date`  : date of end of contract  iso
+         `contract_end_time`  : date of end of contract  iso format
+         `contract_end_tz`    : timezone of end, recongizable by pytz
+         `{POLICY_TYPE}'   : the key itself should be one of the types in
+                             the `ckanext/ids/usage_control.json` file
+
+        """
+        #print("\n\n---------------------------------")
+        #print(json.dumps(contract_data,indent=1))
+        #print("\n---------------------------------")
         if "pkg_id" in contract_data:
             self.pkg_id = contract_data["pkg_id"]
         else:
@@ -35,12 +52,19 @@ class Contract:
                         "contract_end_time": [],
                         "contract_end_tz": [],
                         }
-        self.contract_start = self.validate_date_inputs("contract_start", contract_data, self.errors)
+        self.contract_start = self.validate_date_inputs("contract_start",
+                                                        contract_data,
+                                                        self.errors)
         print("validated start date")
-        self.contract_end = self.validate_date_inputs("contract_end", contract_data, self.errors)
+        self.contract_end = self.validate_date_inputs("contract_end",
+                                                      contract_data,
+                                                      self.errors)
         print("validated end date")
         self.policies = self.validate_policies(contract_data, self.errors)
-        self.errors = {key:val for key, val in self.errors.items() if len(val)}
+        self.errors = {key:val
+                       for key, val
+                       in self.errors.items()
+                       if len(val)}
 
     def converter(self, o):
         if isinstance(o, datetime.datetime):

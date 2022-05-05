@@ -44,6 +44,8 @@ dataset_fields:
     label: Oil
   - value: https://trusts.org/vacabulary/themes/Enterprises
     label: Enterprises
+  - value: https://trusts.org/vacabulary/themes/Culture
+    label: Culture
 
 resource_fields:
 

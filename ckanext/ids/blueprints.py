@@ -326,7 +326,7 @@ def push_package(id):
     # this is the asynchronous task
     # response = toolkit.enqueue_job(push_package_task, [package_meta])
     # this is the synchronous task
-    return push_package_task(package_meta)
+    return {"pushed": push_package_task(package_meta)}
     # return json.dumps(response.id)
 
 
@@ -378,10 +378,10 @@ def publish_action(id):
     #    dataset = toolkit.get_action('package_show')(context, {'id': id})
 
     c.pkg_dict = dataset
-    contract_meta = request.data
-    # logging.error("\n\n\n\n\n\n\n...................... CONTRACT META \n")
-    # logging.error(json.dumps(contract_meta,indent=1))
-    # logging.error("......................\n\n\n\n\n\n\n")
+    if isinstance(request.data, Contract):
+        contract_meta = request.data
+    else:
+        contract_meta = Contract(request.get_json())
     # create the contract
     contract_id = local_connector_resource_api.create_contract(
         {
@@ -422,7 +422,9 @@ def publish_action(id):
 
     updated_package = toolkit.get_action("package_patch")(context, {"id": id,
                                                                     "extras": extras})
-    local_connector.send_resource_to_broker(resource_uri=resource_id)
+    bs = local_connector.send_resource_to_broker(resource_uri=resource_id)
+
+    return {"broker success": bs}
 
 
 @ids_actions.route('/ids/view/publish/<id>', methods=['GET', 'POST'])
@@ -440,7 +442,10 @@ def publish(id, offering_info=None, errors=None):
         microsecond=0)
     if request.method == "POST":
         try:
-            contract = Contract(request.form)
+            if "multipart/form-data" in str(request.content_type):
+                contract = Contract(request.form)
+            else:
+                contract = Contract(request.get_json())
             c.offering = contract
             c.errors = contract.errors
             if len(contract.errors) == 0:
@@ -707,7 +712,7 @@ def contracts_remote():
     resourceId = dataset["id"]
     local_resource = IdsResource.get(resourceId)
     # log.debug(json.dumps(dataset,indent=1))
-    # log.debug("\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n.\n\n\n")
+
     
     #dtheiler start
     recomm_store_view_interaction(
@@ -748,11 +753,11 @@ def contracts_remote():
                             site_url + "/ids/actions/get_data?artifact_id=" \
                                        "" + artifactuuid
 
-                    log.debug("\t|\n\t\n\t|~~~~~~~~~~~>")
-                    log.debug("\t\tartifact_uri :\t" + artifacturi)
-                    log.debug("\t\taccessurl: \t" + accessurl)
-                    log.debug("\t\ttitle: \t" + arttitle)
-                    log.debug("\t\tdescription: \t" + artdesc)
+                    # log.debug("\t|\n\t\n\t|~~~~~~~~~~~>")
+                    # log.debug("\t\tartifact_uri :\t" + artifacturi)
+                    # log.debug("\t\taccessurl: \t" + accessurl)
+                    # log.debug("\t\ttitle: \t" + arttitle)
+                    # log.debug("\t\tdescription: \t" + artdesc)
 
                     artifact_description = {"url": accessurl}
                     artifact_description["title"] = arttitle
