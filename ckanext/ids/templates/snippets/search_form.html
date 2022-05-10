@@ -7,15 +7,15 @@
 	{% if query and count==0 %}
 		
 		{% if type == 'dataset' %}
-			{% set recomms = h.ckanext_ids_recomm_datasets_homepage(4) %}
+			{% set recomms = h.ckanext_ids_recomm_datasets_homepage(3) %}
 		{% endif %}
  
 		{% if type == 'service' %}
-			{% set recomms = h.ckanext_ids_recomm_services_homepage(4) %}
+			{% set recomms = h.ckanext_ids_recomm_services_homepage(3) %}
 		{% endif %}  
  
 		{% if type == 'application' %}
-			{% set recomms = h.ckanext_ids_recomm_applications_homepage(4) %}
+			{% set recomms = h.ckanext_ids_recomm_applications_homepage(3) %}
 		{% endif %}  
   
 		{% if recomms %}
