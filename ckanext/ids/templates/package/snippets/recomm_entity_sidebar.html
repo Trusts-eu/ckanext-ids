@@ -1,6 +1,6 @@
-{% set datasets = h.ckanext_ids_recomm_datasets_sidebar(entity) %}
-{% set services = h.ckanext_ids_recomm_services_sidebar(entity) %}
-{% set applications = h.ckanext_ids_recomm_applications_sidebar(entity) %}
+{% set datasets = h.ckanext_ids_recomm_datasets_sidebar(entity, count) %}
+{% set services = h.ckanext_ids_recomm_services_sidebar(entity, count) %}
+{% set applications = h.ckanext_ids_recomm_applications_sidebar(entity, count) %}
 
 {% if datasets or services or applications %}
 

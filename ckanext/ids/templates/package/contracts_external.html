@@ -24,7 +24,7 @@ super() }}{% endblock %}
     </section>
 
 	{% block recomm_entity_sidebar %}
-		{% snippet 'package/snippets/recomm_entity_sidebar.html', entity=g.pkg_dict %}
+		{% snippet 'package/snippets/recomm_entity_sidebar.html', entity=g.pkg_dict, count=4 %}
 	{% endblock %}
 {% endblock %}
 

@@ -26,23 +26,23 @@ from ckanext.ids.recomm.recomm import recomm_recomm_services_sidebar
 log = logging.getLogger("ckanext")
 
 #dtheiler start
-def recomm_datasets_homepage():
-    return recomm_recomm_datasets_homepage()
+def recomm_datasets_homepage(count):
+    return recomm_recomm_datasets_homepage(count)
 
-def recomm_services_homepage():
-    return recomm_recomm_services_homepage()
+def recomm_services_homepage(count):
+    return recomm_recomm_services_homepage(count)
 
-def recomm_applications_homepage():
-    return recomm_recomm_applications_homepage()
+def recomm_applications_homepage(count):
+    return recomm_recomm_applications_homepage(count)
     
-def recomm_applications_sidebar(entity):
-    return recomm_recomm_applications_sidebar(entity)
+def recomm_applications_sidebar(entity, count):
+    return recomm_recomm_applications_sidebar(entity, count)
     
-def recomm_datasets_sidebar(entity):
-    return recomm_recomm_datasets_sidebar(entity)
+def recomm_datasets_sidebar(entity, count):
+    return recomm_recomm_datasets_sidebar(entity, count)
 
-def recomm_services_sidebar(entity):
-    return recomm_recomm_services_sidebar(entity)    
+def recomm_services_sidebar(entity, count):
+    return recomm_recomm_services_sidebar(entity, count)    
 #dtheiler end
 
 class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):

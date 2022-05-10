@@ -1,6 +1,6 @@
-{% set datasets = h.ckanext_ids_recomm_datasets_homepage() %}
-{% set services = h.ckanext_ids_recomm_services_homepage() %}
-{% set applications = h.ckanext_ids_recomm_applications_homepage() %}
+{% set datasets = h.ckanext_ids_recomm_datasets_homepage(4) %}
+{% set services = h.ckanext_ids_recomm_services_homepage(4) %}
+{% set applications = h.ckanext_ids_recomm_applications_homepage(4) %}
 
 {% if datasets or services or applications %}
 

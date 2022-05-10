@@ -79,14 +79,16 @@ accept_contract_interaction_type="accept_contract"
 view_interaction_type="view"
 
 def recomm_recomm_applications_sidebar(
-    entity):
+    entity, 
+    count):
     
     try:
         userId = plugins.toolkit.g.userobj.id
         
         params = get_recomm_sidebar_params(
             userId,
-            entity)
+            entity, 
+            count)
             
         url = get_recomm_applications_sidebar_url(
             entity['type'])
@@ -114,14 +116,16 @@ def recomm_recomm_applications_sidebar(
         return []    
 
 def recomm_recomm_datasets_sidebar(
-    entity):
+    entity, 
+    count):
     
     try:
         userId = plugins.toolkit.g.userobj.id
         
         params = get_recomm_sidebar_params(
             userId, 
-            entity)
+            entity, 
+            count)
             
         url = get_recomm_datasets_sidebar_url(
             entity['type'])
@@ -149,14 +153,16 @@ def recomm_recomm_datasets_sidebar(
         return []        
         
 def recomm_recomm_services_sidebar(
-    entity):
+    entity, 
+    count):
     
     try:
         userId = plugins.toolkit.g.userobj.id
         
         params = get_recomm_sidebar_params(
             userId, 
-            entity)
+            entity, 
+            count)
             
         url = get_recomm_services_sidebar_url(
             entity['type'])
@@ -183,17 +189,16 @@ def recomm_recomm_services_sidebar(
         recomm_log("Failed to recommended services")
         return []        
 
-def recomm_recomm_datasets_homepage():
+def recomm_recomm_datasets_homepage(
+    count):
     
     try:
         userId = plugins.toolkit.g.userobj.id
         
         params = {
             "userId": userId, 
-            "count": "3"
+            "count": count
         }
-        
-        recomm_log("RECOMM URL | " + recomm_dataset_to_user_url)
         
         response = requests.get(
             url=recomm_dataset_to_user_url, 
@@ -213,14 +218,15 @@ def recomm_recomm_datasets_homepage():
         recomm_log("Failed to recommended datasets for user")
         return []           
 
-def recomm_recomm_services_homepage():
+def recomm_recomm_services_homepage(
+    count):
 
     try:
         userId = plugins.toolkit.g.userobj.id
         
         params = {
             "userId": userId, 
-            "count": "3"
+            "count": count
         }
         
         response = requests.get(
@@ -241,14 +247,15 @@ def recomm_recomm_services_homepage():
         recomm_log("Failed to recommended services for user")
         return []       
     
-def recomm_recomm_applications_homepage():
+def recomm_recomm_applications_homepage(
+    count):
     
     try:
         userId = plugins.toolkit.g.userobj.id
         
         params = {
             "userId": userId, 
-            "count": "3"
+            "count": count
         }
         
         response = requests.get(
@@ -469,27 +476,28 @@ def recomm_log(
 
 def get_recomm_sidebar_params(
     userId:str,
-    entity):
+    entity, 
+    count):
     
     if(entity['type'] == type_application):
         return {
             "userId": userId, 
             "applicationId": entity['id'],
-            "count": "3"
+            "count": count
         }
         
     if(entity['type'] == type_dataset):
         return {
             "userId": userId, 
             "datasetId": entity['id'],
-            "count": "3"
+            "count": count
         }
         
     if(entity['type'] == type_service):
         return {
             "userId": userId, 
             "serviceId": entity['id'],
-            "count": "3"
+            "count": count
         }  
             
     return {}
