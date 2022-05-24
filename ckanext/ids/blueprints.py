@@ -37,6 +37,16 @@ from ckanext.ids.recomm.recomm import recomm_store_view_recomm_interaction
 
 #dtheiler end
 
+# stefan_gind start
+from ckanext.ids.smart_contracts.smart_contract_client import (
+    make_request_to_smart_contract_api
+)
+URL_BLOCKCHAIN = 'http://34.77.109.175:8020/api'
+send_request_to_smart_contract_api = make_request_to_smart_contract_api(
+    URL_BLOCKCHAIN
+)
+# stefan_gindl end
+
 tuplize_dict = logic.tuplize_dict
 clean_dict = logic.clean_dict
 parse_params = logic.parse_params
@@ -67,6 +77,7 @@ def create(id):
         dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
     data['package_id'] = id
     to_delete = ['clear_upload', 'save']
+
 
     # add fields ending with url in to_delete dictionary
     for field in data:
@@ -320,6 +331,8 @@ def transform_url(url):
 @ids_actions.route('/ids/actions/push_package/<id>', methods=['GET'])
 def push_package(id):
     package_meta = toolkit.get_action("package_show")(None, {"id": id})
+    push_to_smart_contract_component(package_meta, id)
+
     # for index, resource in enumerate(package_meta['resources']):
     #    package_meta['resources'][index]['url_type'] = ''
     #    package_meta['resources'][index]['url'] = transform_url(resource['url'])
@@ -328,6 +341,51 @@ def push_package(id):
     # this is the synchronous task
     return {"pushed": push_package_task(package_meta)}
     # return json.dumps(response.id)
+
+
+def push_to_smart_contract_component(package_meta, id):
+    dict_smart_contracts = {
+        "channel": "mychannel",
+        "msp": "Org1MSP",
+        "orguid": "Org1_appuser",
+        # "orguid": package_meta['owner_org'],
+        "assetid": id,
+        "title": package_meta['title'],
+        "size": package_meta['num_resources'],
+        "owner": package_meta['owner_org'],
+        # "owner": package_meta['owner_org'],
+        "value": package_meta['num_tags'],
+        "publisher": package_meta['organization'],
+        "creator": package_meta['author'],
+        "contactPoint": package_meta['author_email'],
+        "keyword": "no_equivalent",
+        "authorisation": "no_equivalent",
+        "dataAccess": package_meta['url'],
+        "creationDate": package_meta['metadata_created'],
+        "license": package_meta['license_title'],
+        "format": "no_equivalent",
+        "accessInterface": "no_equivalent",
+        "description": package_meta['notes'],
+    }
+    r = send_request_to_smart_contract_api(
+        'secure_create_asset',
+        dict_smart_contracts,
+    )
+    msg_smart_contracts = r.json()['message']
+    print(f"Smart contract output: {msg_smart_contracts}")
+
+    # Code for getting all assets, just uncomment. Debugging required,
+    # dict_smart_contracts = {
+    #     "channel": "mychannel",
+    #     "msp": "Org1MSP",
+    #     "orguid": "Org1_appuser"
+    # }
+
+    # r = send_request_to_smart_contract_api(
+    #     'basic_get_all_assets',
+    #     dict_smart_contracts,
+    # )
+    # print(r.json())
 
 
 # TODO: Remove when AJAX script is in place
@@ -486,19 +544,19 @@ def contracts(id, offering_info=None, errors=None):
 def store_download_interaction():
 
     data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
- 
+
     recomm_store_download_interaction(data['entityId'])
-    
+
     return "true"
-    
+
 @ids_actions.route('/ids/actions/store_view_recomm_interaction', methods=['POST'])
 def store_view_recomm_interaction():
 
     data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
- 
+
     recomm_store_view_recomm_interaction(data['entityId'], data['recoId'])
-    
-    return "true"    
+
+    return "true"
 #dtheiler end
 
 # endpoint to accept a contract offer
@@ -514,15 +572,15 @@ def contract_accept():
         "brokerResourceId" : "htt....."
     }
     """
-    
+
     data = clean_dict(
         dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
     if data["provider_url"] is None or len(data["provider_url"]) < 1:
         providing_base_url = "/".join(data["resourceId"].split("/")[:3])
         data["provider_url"] = providing_base_url
-        
+
     local_connector = Connector()
-    local_dsc_api = local_connector.get_resource_api()        
+    local_dsc_api = local_connector.get_resource_api()
     # get the description of the contract
 
     log.debug(":-:-:-:-:- -----  Description Request  ------ "
@@ -590,7 +648,26 @@ def contract_accept():
     #dtheiler start
     recomm_store_accept_contract_interaction(data['resourceId'])
     #dtheiler end
-    
+
+    # stefan_gindl start
+    # Code for transferring assets. Just uncomment. Debugging required.
+    # dict_smart_contracts = {
+    #     "channel": "mychannel",
+    #     "msp": "Org1MSP",
+    #     "orguid": "Org1_appuser",
+    #     "assetid": data['resourceId'],
+    #     "target": config.get("ckanext.ids.connector_catalog_iri"),
+    # }
+    # r = send_request_to_smart_contract_api(
+    #     'basic_transfer_asset',
+    #     dict_smart_contracts,
+    # )
+    # msg_smart_contracts = r.json()['message']
+    # print("=============== SMART CONTRACT::TR OUTPUT START ==================")
+    # print(msg_smart_contracts)
+    # print("=============== SMART CONTRACT OUTPUT END ==================")
+    # stefan_gindl end
+
     return agreement_response
     # resource = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['resourceId'])
     # package = broker_client._to_ckan_package(resource)
@@ -713,13 +790,13 @@ def contracts_remote():
     local_resource = IdsResource.get(resourceId)
     # log.debug(json.dumps(dataset,indent=1))
 
-    
+
     #dtheiler start
     recomm_store_view_interaction(
-        dataset["id"], #entityId 
+        dataset["id"], #entityId
         dataset["type"]) #entityType
     #dtheiler end
-    
+
     try:
         local_agreements = local_resource.get_agreements()
     except AttributeError:
