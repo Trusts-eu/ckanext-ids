@@ -27,6 +27,7 @@ from ckanext.ids.metadatabroker.client import graphs_to_artifacts
 from ckanext.ids.metadatabroker.client import graphs_to_ckan_result_format
 from ckanext.ids.metadatabroker.client import graphs_to_contracts
 from ckanext.ids.model import IdsResource, IdsAgreement
+from ckanext.ids.activity import create_pushed_to_dataspace_connector_activity, create_created_contract_activity
 
 #dtheiler start
 from ckanext.ids.recomm.recomm import recomm_store_view_interaction
@@ -280,6 +281,7 @@ def push_to_dataspace_connector(data):
         log.error("This resource doesn't have any contracts, not pushing to "
                   "broker")
 
+    create_pushed_to_dataspace_connector_activity(context, data["id"])
     return True
 
 
@@ -482,6 +484,7 @@ def publish_action(id):
                                                                     "extras": extras})
     bs = local_connector.send_resource_to_broker(resource_uri=resource_id)
 
+    create_created_contract_activity(context, updated_package["id"])
     return {"broker success": bs}
 
 
