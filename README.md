@@ -41,12 +41,15 @@ To install ckanext-ids:
 
      . /usr/lib/ckan/default/bin/activate
 
+
 2. Clone the source and install it on the virtualenv
 
     git clone https://github.com/semantic-web-company/ckanext-ids.git
     cd ckanext-ids
-    pip install -e .
-	pip install -r requirements.txt
+    pip install -e . 
+    pip install -r requirements.txt
+   
+
 
 3. Add `ids` and `ids_dummy to the `ckan.plugins` setting in your CKAN
    config file (by default the config file is located at
@@ -119,11 +122,11 @@ If ckanext-ids should be available on PyPI you can follow these steps to publish
 
 
 ## Important
+
 In order for the twine upload to work you have to modify your ```.pypirc``` file as following:
 
         [distutils]
-        index-servers =
-            gitlab-trusts
+        index-servers = gitlab-trusts
         
         [gitlab-trusts]
         repository = https://gitlab.com/api/v4/projects/25938659/packages/pypi

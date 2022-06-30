@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import time
 from os.path import join as pathjoin
 
 import requests
@@ -99,11 +100,11 @@ class Connector:
         params = {"recipient": self.broker_url}
         url = pathjoin(self.url, "api/ids/query")
         data = query_string.encode("utf-8")
-        #log.error("Querying "+url+"\nwith "
+        # log.error("Querying "+url+"\nwith "
         #                          "string"+query_string+" "
         #                                                "\n-> "
         #                                                ""+self.broker_url)
-        #log.error("\n|\n|\n|\n|\n|------------")
+        # log.error("\n|\n|\n|\n|\n|------------")
         response = requests.post(url=url,
                                  params=params,
                                  data=data,
@@ -165,14 +166,14 @@ class Connector:
         q += "} }"
         return q
 
-    def announce_to_broker(self):
+    def announce_to_broker(self, force=False):
         # If for some reason this is the first resource we send to the
         # broker, we have to first register this connector.
         # We check the broker response, because if we register when
         # there is already an index for this connector, all resources
         # are deleted :S
         log.error("----ANOUNCE BROKER\n\n")
-        if self.broker_knows_us():
+        if self.broker_knows_us() and not force:
             log.error("\t|---BROKER KNOWS US 1")
             return True
 
@@ -182,9 +183,9 @@ class Connector:
 
         self.broker_knows_us_timestamp = datetime.datetime.now()
 
-        need_to_announce = False
+        need_to_announce = force
         # If the Index is empty, the broker is probably fresh restarted
-        if r.status_code == 417 :
+        if r.status_code == 417:
             #    and "empty" in str(r.json()).lower():
             need_to_announce = True
             log.error("\t|--- 417")
@@ -198,7 +199,7 @@ class Connector:
                 need_to_announce = True
                 log.error("\t|--- 200 but no lines")
 
-        log.error("\t|---NEED"+str(need_to_announce))
+        log.error("\t|---NEED" + str(need_to_announce))
         if need_to_announce:
             params = {"recipient": self.broker_url}
             url = pathjoin(self.url, "api/ids/connector/update")
@@ -206,30 +207,49 @@ class Connector:
                                      params=params,
                                      auth=HTTPBasicAuth(self.auth[0],
                                                         self.auth[1]))
-            log.error("\t|--- /connector/update response was "+str(
+            log.error("\t|--- /connector/update response was " + str(
                 response.status_code))
             if response.status_code < 299:
                 self.broker_knows_us_timestamp = datetime.datetime.now()
         else:
             log.debug("\t---____ NO NEED TO ANNOUNCE US _______________")
-            log.debug("\t---"+str(r.status_code) + "  with lines: " + str(
+            log.debug("\t---" + str(r.status_code) + "  with lines: " + str(
                 numlines))
             self.broker_knows_us_timestamp = datetime.datetime.now()
 
         return True
 
     def send_resource_to_broker(self, resource_uri: str):
-        self.announce_to_broker()
-        params = {"recipient": self.broker_url,
-                  "resourceId": resource_uri}
-        url = pathjoin(self.url, "api/ids/resource/update")
-        response = requests.post(url=url,
-                                 params=params,
-                                 auth=HTTPBasicAuth(self.auth[0],
-                                                    self.auth[1]))
-        log.debug("------ \n\n REQUEST TO ADD TO BROKER " + url + " :")
-        log.debug(json.dumps(params, indent=1))
-        log.debug("------ RESPONSE OF SEND RESOURCE TO BROKER IS :  ")
-        log.debug(response.text)
-        log.debug("\n\n\n\n\n\n\n ---------------------------------------\n")
+        sent_succesfully = False
+        attempts = 0
+        while not sent_succesfully:
+            attempts += 1
+            sent_succesfully = True
+            self.announce_to_broker()
+            params = {"recipient": self.broker_url,
+                      "resourceId": resource_uri}
+            url = pathjoin(self.url, "api/ids/resource/update")
+            response = requests.post(url=url,
+                                     params=params,
+                                     auth=HTTPBasicAuth(self.auth[0],
+                                                        self.auth[1]))
+            log.debug("------ \n\n REQUEST TO ADD TO BROKER " + url + " :")
+            log.debug(json.dumps(params, indent=1))
+            log.debug("------ RESPONSE OF SEND RESOURCE TO BROKER IS :  ")
+            log.debug(response.text)
+            log.debug("\n\n\n\n ----------------------\n -----------------\n")
+            if (response.status_code > 299 or ("RejectionMessage" in
+                                               response.text)):
+                sent_succesfully = False
+                log.error("Connector returned: " + str(response.status_code))
+                log.error("Something went wrong when sending, retrying in 2s")
+                log.debug("\n|\n|\n|\n| Will first force announce")
+                self.announce_to_broker(force=True)
+                log.debug("----------------\n|\n|\n|\n|\n|\n")
+                time.sleep(2)
+
+            if attempts > 10:
+                log.error("10 attempts not push to broker failed")
+                return False
+
         return response.status_code < 299
