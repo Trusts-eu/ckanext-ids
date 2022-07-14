@@ -12,6 +12,7 @@ from ckanext.ids.validator import trusts_url_validator
 import ckanext.ids.blueprints as blueprints
 import ckanext.ids.validator as validator
 from ckanext.ids.metadatabroker.client import broker_package_search
+from ckanext.ids.dataspaceconnector.connector import ConnectorException
 
 #dtheiler start
 from ckanext.ids.recomm.recomm import recomm_recomm_datasets_homepage
@@ -129,9 +130,11 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
             fqset.sort()
 
         fq = tuple(fqset)
+
         results_from_broker = broker_package_search(q=search_query,
-                                                    fq=fq,
-                                                    start_offset=start)
+                                                fq=fq,
+                                                start_offset=start)
+
         # log.debug(".\n\n\n---BROKER SEARCH RESULTS ARE   ")
         # log.debug(json.dumps([x["name"] for x in  results_from_broker],
         #                     indent=1))

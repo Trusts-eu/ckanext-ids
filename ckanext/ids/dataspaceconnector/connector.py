@@ -100,11 +100,7 @@ class Connector:
         params = {"recipient": self.broker_url}
         url = pathjoin(self.url, "api/ids/query")
         data = query_string.encode("utf-8")
-        # log.error("Querying "+url+"\nwith "
-        #                          "string"+query_string+" "
-        #                                                "\n-> "
-        #                                                ""+self.broker_url)
-        # log.error("\n|\n|\n|\n|\n|------------")
+
         response = requests.post(url=url,
                                  params=params,
                                  data=data,
@@ -172,9 +168,9 @@ class Connector:
         # We check the broker response, because if we register when
         # there is already an index for this connector, all resources
         # are deleted :S
-        log.error("----ANOUNCE BROKER\n\n")
+        log.debug("----ANOUNCE BROKER\n\n")
         if self.broker_knows_us() and not force:
-            log.error("\t|---BROKER KNOWS US 1")
+            log.debug("\t|---BROKER KNOWS US 1")
             return True
 
         self.fetch_catalog_ids()
@@ -184,6 +180,8 @@ class Connector:
         self.broker_knows_us_timestamp = datetime.datetime.now()
 
         need_to_announce = force
+        if force:
+            log.debug("\t|--->  FORCING ANNOUNCE")
         # If the Index is empty, the broker is probably fresh restarted
         if r.status_code == 417:
             #    and "empty" in str(r.json()).lower():
@@ -199,7 +197,7 @@ class Connector:
                 need_to_announce = True
                 log.error("\t|--- 200 but no lines")
 
-        log.error("\t|---NEED" + str(need_to_announce))
+        log.debug("\t|---NEED" + str(need_to_announce))
         if need_to_announce:
             params = {"recipient": self.broker_url}
             url = pathjoin(self.url, "api/ids/connector/update")
@@ -207,7 +205,7 @@ class Connector:
                                      params=params,
                                      auth=HTTPBasicAuth(self.auth[0],
                                                         self.auth[1]))
-            log.error("\t|--- /connector/update response was " + str(
+            log.debug("\t|--- /connector/update response was " + str(
                 response.status_code))
             if response.status_code < 299:
                 self.broker_knows_us_timestamp = datetime.datetime.now()
@@ -241,12 +239,15 @@ class Connector:
             if (response.status_code > 299 or ("RejectionMessage" in
                                                response.text)):
                 sent_succesfully = False
+                log.error("\n\n----- THE BROKER REJECTED THE ASSET " +str(
+                    attempts)+" TIMES")
                 log.error("Connector returned: " + str(response.status_code))
-                log.error("Something went wrong when sending, retrying in 2s")
-                log.debug("\n|\n|\n|\n| Will first force announce")
+                log.error("Something went wrong when sending announcment to "
+                          "broker, retrying in 1s")
+                log.debug("\n| Will first force announce")
                 self.announce_to_broker(force=True)
-                log.debug("----------------\n|\n|\n|\n|\n|\n")
-                time.sleep(2)
+                log.debug("----------------\n|\n|\n")
+                time.sleep(1)
 
             if attempts > 10:
                 log.error("10 attempts not push to broker failed")

@@ -1,11 +1,11 @@
 import datetime
 import hashlib
+import json
 import logging
 import urllib.parse
 from copy import deepcopy
 from typing import Set, List, Dict
 from urllib.parse import urlparse
-import json
 
 import ckan.lib.dictization
 import ckan.logic as logic
@@ -100,13 +100,14 @@ def _sparl_get_all_resources(resource_type: str,
     query = """
       PREFIX owl: <http://www.w3.org/2002/07/owl#>
       PREFIX ids: <https://w3id.org/idsa/core/>
-      SELECT ?resultUri ?type ?title ?description ?assettype ?externalname 
+      SELECT ?resultUri ?type ?title ?description ?assettype ?externalname ?license
       WHERE
       { ?resultUri a ?type . 
         ?conn <https://w3id.org/idsa/core/offeredResource> ?resultUri .
         ?resultUri ids:title ?title .
         ?resultUri ids:description ?description .
         ?resultUri owl:sameAs ?externalname .
+        ?resultURI ids:standardLicense ?license .
         #FILTER NOT EXISTS { ?conn owl:sameAs """ + catalogiri + """ }
         """
     if resource_type is None or resource_type == "None":
@@ -221,6 +222,7 @@ def create_moot_ckan_result(resultUri: str,
                             description: str,
                             assettype: str,
                             externalname: str,
+                            license: str,
                             **kwargs):
     # We remove the < > from URIs
     if assettype.startswith("<") and assettype.endswith(">"):
@@ -248,16 +250,20 @@ def create_moot_ckan_result(resultUri: str,
     }
     resources = []
 
+    lictit = ""
+    if "http://" or "https://" in license:
+        lictit = license.split("/")[-1]
+
     packagemeta = deepcopy(empty_result)
     packagemeta["id"] = resultUri
-    packagemeta["license_id"] = None
-    packagemeta["license_url"] = None
-    packagemeta["license_title"] = None
+    packagemeta["license_id"] = license + "LICENSE"
+    packagemeta["license_url"] = license + "LICENSE"
+    packagemeta["license_title"] = lictit
     packagemeta["metadata_created"] = datetime.datetime.now().isoformat()
     packagemeta["metadata_modified"] = datetime.datetime.now().isoformat()
     packagemeta["name"] = title
     packagemeta["title"] = title
-    packagemeta["description"] = description
+    packagemeta["description"] = description + "DESCRIPTION"
     packagemeta["type"] = assettype.split("/")[
         -1].lower()
     packagemeta["theme"] = "THEME"
@@ -343,6 +349,17 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
 
     resource_uri = resource_graphs[0]["sameAs"]
 
+    """
+    print(10*"\n"+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~>>")
+    print("\nresource_graphs = \n",json.dumps(resource_graphs,
+                                            indent=1).replace("\n","\n\t"))
+    print("\nartifact_graphs = \n", json.dumps(artifact_graphs,
+                                             indent=1).replace("\n", "\n\t"))
+    print("\nrepresentation_graphs = \n", json.dumps(representation_graphs,
+                                             indent=1).replace("\n", "\n\t"))
+    print("\n<<~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"+10 * "\n")
+    """
+
     # ToDo get this from the central core as well
     theirname = resource_uri
     organization_name = theirname.split("/")[2].split(":")[0]
@@ -408,7 +425,7 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
     for rg in representation_graphs:
         artifact_this_res = [x for x in artifact_graphs
                              if x["@id"] == rg["instance"]][0]
-        #logging.error(json.dumps(artifact_this_res,indent=1)+
+        # logging.error(json.dumps(artifact_this_res,indent=1)+
         #              "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
         empty_ckan_resource = {
             "artifact": artifact_this_res["@id"],
@@ -485,10 +502,10 @@ def broker_package_search(q=None, start_offset=0, fq=None):
                 search_results.append(pm)
 
     else:
-
         general_query = _sparl_get_all_resources(resource_type=requested_type)
         log.debug("Default search activated---- type:" + str(requested_type))
         # log.debug("QUERY :\n\t" + str(general_query).replace("\n", "\n\t"))
+
         raw_response = connector.query_broker(general_query)
 
         parsed_response = _parse_broker_tabular_response(raw_response)
