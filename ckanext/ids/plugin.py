@@ -108,53 +108,6 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 
         return schema
 
-    def before_search(self, search_params):
-        log.debug(search_params)
-        if "user" in search_params["fq"]:
-            search_params["extras"] = {"ext_include_broker_results": False}
-        return search_params
-
-    def after_search(self, search_results, search_params):
-        if "ext_include_broker_results" in search_params["extras"]:
-            if not search_params["extras"]["ext_include_broker_results"]:
-                return search_results
-        log.debug("\n................ After Search ................\n+")
-        # log.debug("\n\nParams------------------------------------------>")
-        # log.debug(json.dumps(search_params, indent=2))
-        # log.debug("\n\nResults----------------------------------------->")
-        # log.debug(json.dumps(search_results, indent=2))
-
-        start = search_params.get("start", 0)
-        search_query = search_params.get("q", None)
-
-        # The parameters include organizations, we remove this
-        fqset = search_params.get("fq", None)
-        if fqset is not None:
-            fq2 = []
-            for f in fqset:
-                fq2.append(" ".join([x for x in f.split()
-                                     if "+organization" not in x]))
-
-            fqset = fq2
-            fqset.sort()
-
-        fq = tuple(fqset)
-
-        results_from_broker = broker_package_search(q=search_query,
-                                                fq=fq,
-                                                start_offset=start)
-
-        # log.debug(".\n\n\n---BROKER SEARCH RESULTS ARE   ")
-        # log.debug(json.dumps([x["name"] for x in  results_from_broker],
-        #                     indent=1))
-        # log.debug(".\n\n---------------------------:)\n\n ")
-
-        search_results["results"] = results_from_broker + search_results[
-            "results"]
-        search_results["count"] += len(results_from_broker)
-
-        return search_results
-
     def before_view(self, pkg_dict):
         log.debug("\n................ Before View ................\n+")
         data_application = {
@@ -188,13 +141,6 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
 
     def get_blueprint(self):
         return [blueprints.ids_actions]
-
-    plugins.implements(plugins.IPackageController, inherit=True)
-
-    def after_delete(self, context, pkg_dict):
-        package_meta = toolkit.get_action("package_show")(None, {
-            "id": pkg_dict["id"]})
-        blueprints.delete_from_dataspace_connector(package_meta)
         
 
 # The following code is an example of how we can implement a plugin that performs an action on a specific event.
@@ -276,3 +222,56 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
 
     def get_blueprint(self):
         return [blueprints.ids]
+
+    plugins.implements(plugins.IPackageController, inherit=True)
+
+    def after_delete(self, context, pkg_dict):
+        package_meta = toolkit.get_action("package_show")(None, {
+            "id": pkg_dict["id"]})
+        blueprints.delete_from_dataspace_connector(package_meta)
+
+    def before_search(self, search_params):
+        if "creator_user_id" in search_params["fq"]:
+            search_params["extras"] = {"ext_include_broker_results": False}
+        return search_params
+
+    def after_search(self, search_results, search_params):
+        if "ext_include_broker_results" in search_params["extras"]:
+            if not search_params["extras"]["ext_include_broker_results"]:
+                return search_results
+        log.debug("\n................ After Search ................\n+")
+        # log.debug("\n\nParams------------------------------------------>")
+        # log.debug(json.dumps(search_params, indent=2))
+        # log.debug("\n\nResults----------------------------------------->")
+        # log.debug(json.dumps(search_results, indent=2))
+
+        start = search_params.get("start", 0)
+        search_query = search_params.get("q", None)
+
+        # The parameters include organizations, we remove this
+        fqset = search_params.get("fq", None)
+        if fqset is not None:
+            fq2 = []
+            for f in fqset:
+                fq2.append(" ".join([x for x in f.split()
+                                     if "+organization" not in x]))
+
+            fqset = fq2
+            fqset.sort()
+
+        fq = tuple(fqset)
+
+        results_from_broker = broker_package_search(q=search_query,
+                                                    fq=fq,
+                                                    start_offset=start)
+
+        # log.debug(".\n\n\n---BROKER SEARCH RESULTS ARE   ")
+        # log.debug(json.dumps([x["name"] for x in  results_from_broker],
+        #                     indent=1))
+        # log.debug(".\n\n---------------------------:)\n\n ")
+
+        search_results["results"] = results_from_broker + search_results[
+            "results"]
+        search_results["count"] += len(results_from_broker)
+
+        return search_results
