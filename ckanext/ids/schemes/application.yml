@@ -3,47 +3,91 @@ dataset_type: application
 
 dataset_fields:
 
-- field_name: title
-  label:
-    en: Title
-  preset: title
-  form_placeholder: e.g. MyDataset, MyService, MyApp
-  display_property: dc:title
+  - field_name: title
+    label:
+      en: Title
+    preset: title
+    form_placeholder: e.g. MyDataset
+    display_property: dc:title
 
-- field_name: name
-  label: URL
-  preset: package_slug
-  form_placeholder: eg. camel-no-5
-  display_property: dc:identifier
+  - field_name: name
+    label: URL
+    preset: package_slug
+    form_placeholder: eg. camel-no-5
+    display_property: dc:identifier
 
-- field_name: owner_org
-  label:
-    en: Rights Holder
-  preset: dataset_organization
-  display_property : dct:rightsHolder
+  - field_name: description
+    label: Description
+    validators: ignore_missing
+    help_text: A brief free-text description
+    display_property: dct:description
 
-- field_name: license_id
-  label: License
-  form_snippet: license.html
-  help_text: License definitions and additional information can be found at http://opendefinition.org/
+  - field_name: owner_org
+    label:
+      en: Rights Holder
+    preset: dataset_organization
+    display_property : dct:rightsHolder
 
-- field_name: theme
-  label:
-    en: Theme
-  help_text: Theme
-  help_inline: true
-  preset: select
-  choices:
-  - value: https://trusts.org/vacabulary/themes/Industry
-    label: Industry
-  - value: https://trusts.org/vacabulary/themes/Health
-    label: Health
-  - value: https://trusts.org/vacabulary/themes/Agriculture
-    label: Agriculture
-  - value: https://trusts.org/vacabulary/themes/Oil
-    label: Oil
-  - value: https://trusts.org/vacabulary/themes/Enterprises
-    label: Enterprises
+  - field_name: license_id
+    label: License
+    form_snippet: license.html
+    help_text: License definitions and additional information can be found at http://opendefinition.org/
+    display_property: dct:license
+
+  - field_name: keywords
+    label: Keywords
+    preset: multiple_text
+    help_text: Add keywords
+    display_property: dcat:keyword
+
+  - field_name: theme
+    label:
+      en: Theme
+    help_text: Theme
+    help_inline: true
+    preset: select
+    form_snippet: autocomplete_dropdown.html
+    choices_helper: skos_vocabulary_helper
+    skos_choices_sparql_endpoint: https://trusts.poolparty.biz/PoolParty/sparql/Themes
+    #skos_choices_concept_scheme: https://trusts.poolparty.biz/Themes/0
+    skos_choices_is_poolparty: true
+    display_property: dcat:theme
+
+  - field_name: metric
+    label: Metric
+    validators: ignore_missing
+    help_text: Metric used in dataset
+    display_property: edmi:metric
+
+  - field_name: sample
+    label: Sample
+    validators: ignore_missing
+    help_text: URL of sample dataset
+    display_property: idsa:sample
+
+  - field_name: citation
+    label: Citation
+    validators: ignore_missing
+    help_text: A citation or reference to another work that describes the dataset
+    display_property: edmi:citation
+
+  - field_name: referenceCitation
+    label: Reference Citation
+    validators: ignore_missing
+    help_text: How to Cite this Dataset
+    display_property: edmi:referencecitation
+
+  - field_name: TimeFrame
+    label:
+      en: Time Frame
+    help_text: Time frame of dataset delivery
+    help_inline: true
+    preset: select
+    form_snippet: autocomplete_dropdown.html
+    choices_helper: skos_vocabulary_helper
+    skos_choices_sparql_endpoint: https://trusts.poolparty.biz/PoolParty/sparql/TimeFrames
+    skos_choices_is_poolparty: true
+    display_property: dcat:theme
 
 resource_fields:
 
