@@ -24,6 +24,8 @@ from ckanext.ids.recomm.recomm import recomm_recomm_datasets_sidebar
 from ckanext.ids.recomm.recomm import recomm_recomm_services_sidebar
 #dtheiler end
 
+from ckanext.ids.helpers import check_if_contract_offer_exists
+
 # ToDo make sure this logger is set higher
 log = logging.getLogger("ckanext")
 
@@ -68,7 +70,8 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
             'ckanext_ids_recomm_applications_homepage': recomm_applications_homepage, 
             'ckanext_ids_recomm_applications_sidebar': recomm_applications_sidebar, 
             'ckanext_ids_recomm_datasets_sidebar': recomm_datasets_sidebar, 
-            'ckanext_ids_recomm_services_sidebar': recomm_services_sidebar 
+            'ckanext_ids_recomm_services_sidebar': recomm_services_sidebar,
+            'ckanext_ids_check_if_contract_offer_exists': check_if_contract_offer_exists
             }   
     #dtheiler end
     
@@ -104,6 +107,12 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         })
 
         return schema
+
+    def before_search(self, search_params):
+        log.debug(search_params)
+        if "user" in search_params["fq"]:
+            search_params["extras"] = {"ext_include_broker_results": False}
+        return search_params
 
     def after_search(self, search_results, search_params):
         if "ext_include_broker_results" in search_params["extras"]:
