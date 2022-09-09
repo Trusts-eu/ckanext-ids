@@ -725,7 +725,7 @@ def create_external_package(data):
 
 def create_or_get_catalog_id():
     local_connector_resource_api = Connector().get_resource_api()
-    title = config.get("app_instance_uuid")
+    title = config.get("ckanext.ids.local_node_name")
     catalogs = local_connector_resource_api.get_catalogs()
     found = False
     for i, value in enumerate(catalogs["_embedded"]["catalogs"]):

@@ -2,17 +2,32 @@
   "version": 1,
   "policy_templates": [
     {
-      "label": "",
+      "label": {
+        "en": "Allow the Usage of the resource"
+      },
+      "description": {
+        "en": "This policy simply grants access to the resource."
+      },
       "type": "PROVIDE_ACCESS",
       "fields": []
     },
     {
-      "label": "",
+      "label": {
+        "en": "Prohibit the Usage of the resource"
+      },
+      "description": {
+        "en": "This policy simply prohibits access to the resource."
+      },
       "type": "PROHIBIT_ACCESS",
       "fields": []
     },
     {
-      "label": "",
+      "label": {
+        "en": "Restricted Number of Usages"
+      },
+      "description": {
+        "en": "This policy counts the access number of the resource and denies access if the access number is greater than the maximum number of accesses."
+      },
       "type": "N_TIMES_USAGE",
       "fields": [
         {
@@ -20,6 +35,7 @@
           "label": "Value",
           "validators": "is_positive_integer",
           "form_snippet": "number.html",
+          "help_text": "The maximum number of accesses",
           "form_attrs": {
             "type": "number",
             "min": 0
@@ -28,7 +44,12 @@
       ]
     },
     {
-      "label": "",
+      "label": {
+        "en": "Interval-restricted Data Usage"
+      },
+      "description": {
+        "en": "Checks if the data access time is between the start and end time defined."
+      },
       "type": "USAGE_DURING_INTERVAL",
       "fields": [
         {
@@ -36,6 +57,7 @@
           "label": "Start",
           "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
           "form_snippet": "datetime_tz.html",
+          "help_text" : "Start time (of type ZonedDateTime, a representation of an instant in the universal timeline)",
           "display_snippet": "datetime_tz.html"
         },
         {
@@ -43,18 +65,25 @@
           "label": "End",
           "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
           "form_snippet": "datetime_tz.html",
+          "help_text": "End time (of type ZonedDateTime, a representation of an instant in the universal timeline)",
           "display_snippet": "datetime_tz.html"
         }
       ]
     },
     {
-      "label": "",
+      "label": {
+        "en": "Duration-restricted Data Usage"
+      },
+      "description": {
+        "en": "This policy starts a duration for a resource: the resource can only be accessed in the specified period. The duration starts counting from the artifacts’ creation time. If the consumer tries to access the resource and the current time is over the allowed period access is denied."
+      },
       "type": "DURATION_USAGE",
       "fields": [
         {
           "field_name": "duration",
           "label": "duration",
           "validators": "is_positive_integer",
+          "help_text": "a duration, as specified by the Duration Java class. (Example: “PT10H” stands for 10 hours)",
           "form_snippet": "duration.html",
           "form_attrs": {
           }
@@ -62,7 +91,12 @@
       ]
     },
     {
-      "label": "",
+      "label": {
+        "en": "Use Data and Delete it After"
+      },
+      "description": {
+        "en": "Similar to the Interval-restricted Data Usage policy, this one checks if the data access time is between the start and end time defined with an additional postDuty field with a DELETE action. Technically, this deletes the data after the interval has passed. The Usage Until Deletion policy should be used if it is desired that the resource be deleted after the time interval."
+      },
       "type": "USAGE_UNTIL_DELETION",
       "fields": [
         {
@@ -70,6 +104,7 @@
           "label": "Start",
           "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
           "form_snippet": "datetime_tz.html",
+          "help_text": "Start time (of type ZonedDateTime, a representation of an instant in the universal timeline)",
           "display_snippet": "datetime_tz.html"
         },
         {
@@ -77,24 +112,38 @@
           "label": "End",
           "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
           "form_snippet": "datetime_tz.html",
-          "display_snippet": "datetime_tz.html"
-        },
-        {
-          "field_name": "date",
-          "label": "End",
-          "validators": "scheming_isodatetime_tz convert_to_json_if_datetime",
-          "form_snippet": "datetime_tz.html",
+          "help_text": "End time (of type ZonedDateTime, a representation of an instant in the universal timeline)",
           "display_snippet": "datetime_tz.html"
         }
       ]
     },
     {
-      "label": "",
+      "label": {
+        "en": "Local Logging"
+      },
+      "description": {
+        "en": "This defines the policy to send usage logs to the clearing house. The clearing house has to be defined in the connectors’ configuration. The logs are sent as IDS Messages to the clearing house."
+      },
       "type": "USAGE_LOGGING",
-      "fields": []
+      "fields": [
+        {
+          "field_name": "url",
+          "label": "URL",
+          "validators": "",
+          "form_snippet": "text.html",
+          "help_text": "Clearing house url in connector configuration",
+          "form_attrs": {
+          }
+        }
+      ]
     },
     {
-      "label": "",
+      "label": {
+        "en": "Remote Notifications"
+      },
+      "description": {
+        "en": "This policy is similar to Usage Logging, but is not restricted to sending messages to a clearing house. In the post duty field of the rule, an url can be defined within a constraint to which the DSC will send usage notifications to. The payload of the logs sent contain target, issuer connector and access time. If the message could not be sent, the access will still be granted."
+      },
       "type": "USAGE_NOTIFICATION",
       "fields": [
         {
@@ -102,13 +151,19 @@
           "label": "URL",
           "validators": "",
           "form_snippet": "text.html",
+          "help_text": "URL to which usage notifications should be sent to (not limited to clearing house)",
           "form_attrs": {
           }
         }
       ]
     },
     {
-      "label": "",
+      "label": {
+        "en": "Connector-restricted Data Usage"
+      },
+      "description": {
+        "en": "This policy checks if the issuer connector is equal to a specified connector."
+      },
       "type": "CONNECTOR_RESTRICTED_USAGE",
       "fields": [
         {
@@ -116,13 +171,19 @@
           "label": "URL",
           "validators": "",
           "form_snippet": "text.html",
+          "help_text": "Allowed connector URI defined in a rule.",
           "form_attrs": {
           }
         }
       ]
     },
     {
-      "label": "",
+      "label": {
+        "en": "Security Level Restricted Policy"
+      },
+      "description": {
+        "en": "This policy checks if the connector has a specific security profile. This is verified by analyzing the DAT claims of the message received."
+      },
       "type": "SECURITY_PROFILE_RESTRICTED_USAGE",
       "fields": [
         {
@@ -130,6 +191,7 @@
           "label": "Profile",
           "validators": "",
           "form_snippet": "text.html",
+          "help_text": "Required connector security profile (BASE_SECURITY_PROFILE, TRUST_SECURITY_PROFILE and TRUST_PLUS_SECURITY_PROFILE)",
           "form_attrs": {
           }
         }

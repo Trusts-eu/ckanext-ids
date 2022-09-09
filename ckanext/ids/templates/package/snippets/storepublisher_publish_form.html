@@ -90,10 +90,13 @@ then itself be extended to add/remove blocks of functionality. #}
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         {%- set attributes = {"onchange":"enableUsagePolicyOptions(this)"} -%}
-                        {{ form.checkbox(policy.type, checked=false, attrs=attributes) }}
+                        {% set label = policy["label"][h.lang()]  %}
+                        {% set description = policy["description"][h.lang()]  %}
+                        {{ form.checkbox(policy.type, label=label, checked=false, attrs=attributes) }}
                     </div>
+                    <div class="panel-body">
+                    <p>{{ description }}</p>
                     {%- if  policy['fields']|length != 0 -%}
-                        <div class="panel-body">
                             {% for field in policy.fields %}
                                 {%- snippet 'scheming/form_snippets/' + field.form_snippet,
                                                             field=field,
@@ -103,8 +106,8 @@ then itself be extended to add/remove blocks of functionality. #}
                                                             object_type='contract'
                                 -%}
                             {% endfor %}
-                        </div>
                     {% endif %}
+                    </div>
                 </div>
             {% endfor %}
         </div>
