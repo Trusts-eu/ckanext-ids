@@ -10,6 +10,7 @@ Example:
   {% snippet "package/snippets/resources_list.html", data=data, resources=data.resources %}
 
 #}
+{%- set data = c.data -%}
 <section id="dataset-contracts" class="contracts">
     <h2>{{ _('Contracts') }}</h2>
     {% block contract_list %}

@@ -536,7 +536,7 @@ def contracts(id, offering_info=None, errors=None):
         if len(possible_contracts) > 0:
             contract = json.loads(next(iter(possible_contracts))["value"])
             c.contracts = [contract]
-
+    c.data = dataset
     return toolkit.render('package/contracts.html',
                           extra_vars={
                               u'pkg_dict': dataset
