@@ -468,7 +468,7 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     log.debug(str(fq))
     log.debug("-----------------------------------------------------------\n")
     default_search = "*:*"
-    search_string = q if q is not None else default_search
+    search_string = None if q == default_search else q
 
     # By default we will search for all sorts of stuff
     requested_type = None
