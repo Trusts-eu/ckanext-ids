@@ -93,8 +93,7 @@ def _sparql_describe_many_resources(resources: Set[rdflib.URIRef]) -> str:
 
 
 # ToDo uncomment filter statement
-def _sparl_get_all_resources(resource_type: str,
-                             type_pred="https://www.trusts-data.eu/ontology/asset_type"):
+def _sparl_get_all_resources(resource_type: str, fts_query: str, type_pred="https://www.trusts-data.eu/ontology/asset_type"):
     catalogiri = URI(config.get("ckanext.ids.connector_catalog_iri")).n3()
 
     query = """
@@ -107,7 +106,7 @@ def _sparl_get_all_resources(resource_type: str,
         ?resultUri ids:title ?title .
         ?resultUri ids:description ?description .
         ?resultUri owl:sameAs ?externalname .
-        ?resultURI ids:standardLicense ?license .
+        ?resultUri ids:standardLicense ?license .
         #FILTER NOT EXISTS { ?conn owl:sameAs """ + catalogiri + """ }
         """
     if resource_type is None or resource_type == "None":
@@ -116,8 +115,10 @@ def _sparl_get_all_resources(resource_type: str,
         typeuri = URI("https://www.trusts-data.eu/ontology/" + \
                       resource_type.capitalize())
         query += "\n ?resultUri " + URI(
-            type_pred).n3() + " " + typeuri.n3() + "."
-        query += "\nBIND( " + typeuri.n3() + " AS ?assettype) ."
+            type_pred).n3() + " ?assettype ."
+        query += "\nvalues ?assettype { " + typeuri.n3() + " } "
+    if fts_query is not None:
+        query += "FILTER regex(concat(?title, \" \",?description), \"" + fts_query + "\", \"i\")"
     query += "\n}"
     return query
 
@@ -485,7 +486,8 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     search_results = []
     resource_uris = []
 
-    if len(search_string) > 0 and search_string != default_search:
+    if False:
+    #if len(search_string) > 0 and search_string != default_search:
         raw_response = connector.search_broker(search_string=search_string,
                                                offset=start_offset)
         parsed_response = _parse_broker_tabular_response(raw_response)
@@ -500,9 +502,8 @@ def broker_package_search(q=None, start_offset=0, fq=None):
             pm = graphs_to_ckan_result_format(v)
             if pm is not None:
                 search_results.append(pm)
-
     else:
-        general_query = _sparl_get_all_resources(resource_type=requested_type)
+        general_query = _sparl_get_all_resources(resource_type=requested_type, fts_query=search_string)
         log.debug("Default search activated---- type:" + str(requested_type))
         # log.debug("QUERY :\n\t" + str(general_query).replace("\n", "\n\t"))
 
