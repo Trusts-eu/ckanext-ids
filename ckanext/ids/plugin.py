@@ -107,34 +107,34 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         })
 
         return schema
-
-    def before_view(self, pkg_dict):
+    # before rendering organization view
+    def before_view(self, organization):
         log.debug("\n................ Before View ................\n+")
         data_application = {
-            'fq': '+type:application +organization:' + pkg_dict['name'],
+            'fq': '+type:application +organization:' + organization['name'],
             'include_private': True,
             'ext_include_broker_results': False
         }
         application_search = toolkit.get_action("package_search")(None,
                                                                   data_application)
         data_service = {
-            'fq': '+type:service +organization:' + pkg_dict['name'],
+            'fq': '+type:service +organization:' + organization['name'],
             'include_private': True,
             'ext_include_broker_results': False
         }
         service_search = toolkit.get_action("package_search")(None,
                                                               data_service)
         data_dataset = {
-            'fq': '+type:dataset +organization:' + pkg_dict['name'],
+            'fq': '+type:dataset +organization:' + organization['name'],
             'include_private': True,
             'ext_include_broker_results': False
         }
         dataset_search = toolkit.get_action("package_search")(None,
                                                               data_dataset)
-        pkg_dict['application_count'] = application_search['count']
-        pkg_dict['service_count'] = service_search['count']
-        pkg_dict['dataset_count'] = dataset_search['count']
-        return pkg_dict
+        organization['application_count'] = application_search['count']
+        organization['service_count'] = service_search['count']
+        organization['dataset_count'] = dataset_search['count']
+        return organization
 
     # IBlueprint
     plugins.implements(plugins.IBlueprint)
@@ -236,9 +236,17 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
         return search_params
 
     def after_search(self, search_results, search_params):
-        if "ext_include_broker_results" in search_params["extras"]:
-            if not search_params["extras"]["ext_include_broker_results"]:
-                return search_results
+        context = plugins.toolkit.c
+
+        if context.action == "search":
+                results_from_broker = self.retrieve_results_from_broker(search_params)
+                search_results["results"] = results_from_broker
+                search_results["count"] = len(results_from_broker)
+        else:
+            search_results = search_results
+        return search_results
+
+    def retrieve_results_from_broker(self, search_params):
         log.debug("\n................ After Search ................\n+")
         # log.debug("\n\nParams------------------------------------------>")
         # log.debug(json.dumps(search_params, indent=2))
@@ -269,9 +277,4 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
         # log.debug(json.dumps([x["name"] for x in  results_from_broker],
         #                     indent=1))
         # log.debug(".\n\n---------------------------:)\n\n ")
-
-        search_results["results"] = results_from_broker + search_results[
-            "results"]
-        search_results["count"] += len(results_from_broker)
-
-        return search_results
+        return results_from_broker

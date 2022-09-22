@@ -118,7 +118,7 @@ def _sparl_get_all_resources(resource_type: str, fts_query: str, type_pred="http
             type_pred).n3() + " ?assettype ."
         query += "\nvalues ?assettype { " + typeuri.n3() + " } "
     if fts_query is not None:
-        query += "FILTER regex(concat(?title, \" \",?description), \"" + fts_query + "\", \"i\")"
+        query += "FILTER regex(concat(?title, \" \",?description, \" \",str(?externalname)), \"" + fts_query + "\", \"i\")"
     query += "\n}"
     return query
 

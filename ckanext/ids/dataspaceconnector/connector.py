@@ -249,7 +249,7 @@ class Connector:
                 log.debug("----------------\n|\n|\n")
                 time.sleep(1)
 
-            if attempts > 10:
+            if attempts > 3:
                 log.error("10 attempts not push to broker failed")
                 return False
 
