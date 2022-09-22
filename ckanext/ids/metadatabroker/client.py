@@ -107,7 +107,8 @@ def _sparl_get_all_resources(resource_type: str, fts_query: str, type_pred="http
         ?resultUri ids:description ?description .
         ?resultUri owl:sameAs ?externalname .
         ?resultUri ids:standardLicense ?license .
-        #FILTER NOT EXISTS { ?conn owl:sameAs """ + catalogiri + """ }
+        FILTER (!regex(str(?externalname),\"""" + config.get(
+        'ckanext.ids.local_node_name') + """\",\"i\"))
         """
     if resource_type is None or resource_type == "None":
         query += "\n ?resultUri " + URI(type_pred).n3() + " ?assettype."

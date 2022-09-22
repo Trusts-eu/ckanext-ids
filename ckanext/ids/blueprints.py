@@ -459,12 +459,20 @@ def publish_action(id):
     # add rules to contract
     local_connector_resource_api.add_rule_to_contract(contract=contract_id,
                                                       rule=rules)
+    log.debug("Rule added on contract.")
+    if "extras" not in dataset:
+        log.info("Dataset not yet pushed to the local DSC. I will push it now...")
+        push_package(id)
+        dataset = toolkit.get_action('package_show')(context, {'id': id})
+        log.info("Done")
     resource_id = \
         next((sub for sub in dataset["extras"] if sub['key'] == 'offers'),
              None)[
             "value"]
     local_connector_resource_api.add_contract_to_resource(resource=resource_id,
+
                                                           contract=contract_id)
+    log.debug("Contract added to resource")
     extras = dataset["extras"]
     # If this already had a contract, we overwrite it
     # Otherwise we get a duplicate-error from the package_patch action below
@@ -482,7 +490,9 @@ def publish_action(id):
 
     updated_package = toolkit.get_action("package_patch")(context, {"id": id,
                                                                     "extras": extras})
+    log.info("Sending resource to broker")
     bs = local_connector.send_resource_to_broker(resource_uri=resource_id)
+    log.info("Resource was sent to broker.")
 
     create_created_contract_activity(context, updated_package["id"])
     return {"broker success": bs}
