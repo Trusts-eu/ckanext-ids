@@ -42,7 +42,7 @@ from ckanext.ids.recomm.recomm import recomm_store_view_recomm_interaction
 from ckanext.ids.smart_contracts.smart_contract_client import (
     make_request_to_smart_contract_api
 )
-URL_BLOCKCHAIN = 'http://34.77.109.175:8020/api'
+URL_BLOCKCHAIN=config.get("ckanext.ids.blockchain.api_url", 'http://34.77.109.175:8020/api')
 send_request_to_smart_contract_api = make_request_to_smart_contract_api(
     URL_BLOCKCHAIN
 )
@@ -333,7 +333,8 @@ def transform_url(url):
 @ids_actions.route('/ids/actions/push_package/<id>', methods=['GET'])
 def push_package(id):
     package_meta = toolkit.get_action("package_show")(None, {"id": id})
-    push_to_smart_contract_component(package_meta, id)
+    if config.get("ckanext.ids.blockchain.enabled", "false") == "true":
+        push_to_smart_contract_component(package_meta, id)
 
     # for index, resource in enumerate(package_meta['resources']):
     #    package_meta['resources'][index]['url_type'] = ''
