@@ -6,6 +6,7 @@ import os
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 from ckan.common import config
+import ckan.model as model
 from ckan.lib.plugins import DefaultTranslation
 from ckanext.ids.validator import trusts_url_validator
 
@@ -231,19 +232,30 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
         blueprints.delete_from_dataspace_connector(package_meta)
 
     def before_search(self, search_params):
-        if "creator_user_id" in search_params["fq"]:
-            search_params["extras"] = {"ext_include_broker_results": False}
+#        if "creator_user_id" in search_params["fq"]:
+#            search_params["extras"] = {"ext_include_broker_results": False}
         return search_params
 
     def after_search(self, search_results, search_params):
         context = plugins.toolkit.c
 
         if context.action == "search":
-                results_from_broker = self.retrieve_results_from_broker(search_params)
-                search_results["results"] = results_from_broker
-                search_results["count"] = len(results_from_broker)
+            results_from_broker = self.retrieve_results_from_broker(search_params)
+            search_results["results"] = results_from_broker
+            search_results["count"] = len(results_from_broker)
+        if context.action == "action":
+            results_from_broker = self.retrieve_results_from_broker(search_params)
+            search_results["results"].extend(results_from_broker)
+            search_results["count"] += len(results_from_broker)
         else:
             search_results = search_results
+
+        if "ext_include_tracking" in search_params["extras"]:
+            if toolkit.asbool(search_params["extras"]["ext_include_tracking"]):
+                for result in search_results["results"]:
+                    result['tracking_summary'] = (
+                    model.TrackingSummary.get_for_package(result['id']))
+
         return search_results
 
     def retrieve_results_from_broker(self, search_params):
