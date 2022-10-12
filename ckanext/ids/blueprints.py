@@ -780,7 +780,7 @@ def contracts_remote():
     _dscbaseurl = config.get("ckan.site_url")
     _dsc_hostname = urlsplit(_dscbaseurl).hostname.split(":")[0]
     basedscurl = _dsc_hostname + ":8282"
-    log.error("-:-:-:-:--------------------------------------->\n\n\n")
+    log.error("-:-:-:-:~~~~~~~~~~~~~~~~------------------------------>\n\n\n")
 
     # Ger from broker info for this ID
     resource_uri = request.args.get("uri")
@@ -863,7 +863,7 @@ def contracts_remote():
 
     if len(local_artifacts):
         c.local_artifacts = local_artifacts
-
+    c.data = dataset
     return toolkit.render('package/contracts_external.html',
                           extra_vars={
                               u'pkg_dict': dataset
