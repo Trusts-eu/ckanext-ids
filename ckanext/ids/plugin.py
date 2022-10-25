@@ -8,12 +8,10 @@ import ckan.plugins.toolkit as toolkit
 from ckan.common import config
 import ckan.model as model
 from ckan.lib.plugins import DefaultTranslation
-from ckanext.ids.validator import trusts_url_validator
-
 import ckanext.ids.blueprints as blueprints
 import ckanext.ids.validator as validator
-from ckanext.ids.metadatabroker.client import broker_package_search
-from ckanext.ids.dataspaceconnector.connector import ConnectorException
+from ckanext.ids.metadatabroker.client import broker_package_search, strip_scheme
+from collections import OrderedDict, Counter
 
 #dtheiler start
 from ckanext.ids.recomm.recomm import recomm_recomm_datasets_homepage
@@ -26,7 +24,8 @@ from ckanext.ids.recomm.recomm import recomm_recomm_services_sidebar
 #dtheiler end
 
 from ckanext.ids.helpers import check_if_contract_offer_exists
-
+from ckanext.scheming.helpers import scheming_get_schema, scheming_field_by_name
+from ckanext.vocabularies.helpers import skos_choices_sparql_helper, skos_choices_get_label_by_value
 # ToDo make sure this logger is set higher
 log = logging.getLogger("ckanext")
 
@@ -205,24 +204,50 @@ def load_usage_control_policies():
             return json.load(schema_file)
 
 
-class IdsResourcesPlugin(plugins.SingletonPlugin):
-    plugins.implements(plugins.IBlueprint)
-    assert_config()
-    blueprints.create_or_get_catalog_id()
-    usage_control_policies = load_usage_control_policies()
-    # fixing the names in the policy templates and adding some default options
-    for policy in usage_control_policies["policy_templates"]:
+def transform_usage_control_policies(policies):
+    for policy in policies["policy_templates"]:
         for field in policy["fields"]:
             field["field_name"] = policy["type"] + "_" + field["field_name"]
             try:
                 field["form_attrs"]["disabled"] = ""
             except KeyError:
                 field["form_attrs"] = {"disabled": ""}
+
+
+def get_usage_control_policies():
+    usage_control_policies = load_usage_control_policies()
+    return transform_usage_control_policies(usage_control_policies)
+
+
+def dictionize_licenses():
+    licenses_dict = {}
+    for license in toolkit.get_action("license_list")(None, None):
+        licenses_dict[license["url"]] = license
+    return licenses_dict
+
+
+class IdsResourcesPlugin(plugins.SingletonPlugin):
+    plugins.implements(plugins.IBlueprint)
+    assert_config()
+    blueprints.create_or_get_catalog_id()
+    # fixing the names in the policy templates and adding some default options
     config.store.update(
-        {"ckanext.ids.usage_control_policies": usage_control_policies})
+        {"ckanext.ids.usage_control_policies": get_usage_control_policies(),
+         "ckanext.ids.licenses": dictionize_licenses()})
 
     def get_blueprint(self):
         return [blueprints.ids]
+
+    plugins.implements(plugins.IFacets, inherit=True)
+
+    # Here we define the facets fields that will be added when a package search is triggered.
+    def dataset_facets(self, facets_dict, package_type):
+        new_facets_dict = OrderedDict()
+        new_facets_dict["license_id"] = plugins.toolkit._("License")
+        new_facets_dict["theme"] = plugins.toolkit._("Theme")
+        new_facets_dict["TimeFrame"] = plugins.toolkit._("Time Frame")
+
+        return new_facets_dict
 
     plugins.implements(plugins.IPackageController, inherit=True)
 
@@ -232,8 +257,6 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
         blueprints.delete_from_dataspace_connector(package_meta)
 
     def before_search(self, search_params):
-#        if "creator_user_id" in search_params["fq"]:
-#            search_params["extras"] = {"ext_include_broker_results": False}
         return search_params
 
     def after_search(self, search_results, search_params):
@@ -241,12 +264,16 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
 
         if context.action == "search":
             results_from_broker = self.retrieve_results_from_broker(search_params)
-            search_results["results"] = results_from_broker
-            search_results["count"] = len(results_from_broker)
+            search_results["results"] = results_from_broker["results"]
+            search_results["count"] = results_from_broker["count"]
+            search_results["facets"] = results_from_broker["facets"]
+            search_results["search_facets"] = self.retrieve_facet_labels(results_from_broker["search_facets"])
         if context.action == "action":
             results_from_broker = self.retrieve_results_from_broker(search_params)
-            search_results["results"].extend(results_from_broker)
-            search_results["count"] += len(results_from_broker)
+            search_results["results"].extend(results_from_broker["results"])
+            search_results["count"] += results_from_broker["count"]
+            search_results["facets"] = self.merge_facets(search_results["facets"], results_from_broker["facets"])
+            search_results["search_facets"] = self.merge_search_facets(search_results["search_facets"], results_from_broker["search_facets"])
         else:
             search_results = search_results
 
@@ -266,6 +293,7 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
         # log.debug(json.dumps(search_results, indent=2))
 
         start = search_params.get("start", 0)
+        limit = search_params.get("rows", 20)
         search_query = search_params.get("q", None)
 
         # The parameters include organizations, we remove this
@@ -273,8 +301,8 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
         if fqset is not None:
             fq2 = []
             for f in fqset:
-                fq2.append(" ".join([x for x in f.split()
-                                     if "+organization" not in x]))
+                fq2.extend([x for x in f.split()
+                                     if "+organization" not in x])
 
             fqset = fq2
             fqset.sort()
@@ -283,10 +311,62 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
 
         results_from_broker = broker_package_search(q=search_query,
                                                     fq=fq,
-                                                    start_offset=start)
+                                                    start_offset=start,
+                                                    limit=limit,
+                                                    facet_fields=search_params.get("facet.field", None))
 
         # log.debug(".\n\n\n---BROKER SEARCH RESULTS ARE   ")
         # log.debug(json.dumps([x["name"] for x in  results_from_broker],
         #                     indent=1))
         # log.debug(".\n\n---------------------------:)\n\n ")
         return results_from_broker
+
+    def merge_facets(self, solr_results: dict, broker_results: dict):
+        for facet in broker_results.keys():
+            if facet in solr_results.keys():
+                solr_results[facet] = dict(Counter(broker_results[facet]) + Counter(solr_results[facet]))
+            else:
+                solr_results[facet] = broker_results[facet]
+        return solr_results
+
+    def merge_search_facets(self, solr_results: dict, broker_results: dict):
+        for facet in broker_results.keys():
+            if facet in solr_results.keys():
+                solr_results_facet_item_names = [item['name'] for item in solr_results[facet]["items"]]
+                for broker_item in broker_results[facet]["items"]:
+                    if broker_item["name"] in solr_results_facet_item_names:
+                        index = solr_results_facet_item_names.index(broker_item["name"])
+                        solr_results[facet]["items"][index]["count"] += broker_item["count"]
+                    else:
+                        solr_results[facet]["items"].append(broker_item)
+            else:
+                solr_results[facet] = broker_results[facet]
+        solr_results = self.retrieve_facet_labels(solr_results)
+        return solr_results
+
+    def retrieve_facet_labels(self, results: dict):
+        dataset_schema = scheming_get_schema("dataset", "dataset", True)
+        for facet_key in results:
+            if facet_key == "license_id":
+                results["license_id"] = self.retrieve_facet_license_labels(results)["license_id"]
+            else:
+                schema_field = scheming_field_by_name(dataset_schema["dataset_fields"], facet_key)
+                if schema_field["choices_helper"] == "skos_vocabulary_helper":
+                    skos_choices = skos_choices_sparql_helper(schema_field)
+                    for facet_item_index, facet_item in enumerate(results[facet_key]["items"]):
+                        display_name = skos_choices_get_label_by_value(skos_choices, facet_item["name"])
+                        results[facet_key]["items"][facet_item_index]["display_name"] = display_name
+
+        return results
+
+    def retrieve_facet_license_labels(self, solr_results: dict):
+        licenses = config.get("ckanext.ids.licenses")
+        for facet_item_index, facet_item in enumerate(solr_results["license_id"]["items"]):
+            display_name = None
+            if facet_item["name"].find("http") is not -1:
+                if facet_item["name"].find("cc-zero") > 0 :
+                    display_name = "CC0 1.0"
+                else:
+                    display_name = licenses[facet_item["name"]]["title"]
+                solr_results["license_id"]["items"][facet_item_index]["display_name"] = display_name
+        return solr_results

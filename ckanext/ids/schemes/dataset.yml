@@ -32,7 +32,7 @@ dataset_fields:
     label: License
     form_snippet: license.html
     help_text: License definitions and additional information can be found at http://opendefinition.org/
-    display_property: dct:license
+    display_property: https://w3id.org/idsa/core/standardLicense
 
   - field_name: keywords
     label: Keywords
@@ -51,7 +51,7 @@ dataset_fields:
     skos_choices_sparql_endpoint: https://trusts.poolparty.biz/PoolParty/sparql/Themes
     #skos_choices_concept_scheme: https://trusts.poolparty.biz/Themes/0
     skos_choices_is_poolparty: true
-    display_property: dcat:theme
+    display_property: https://www.trusts-data.eu/ontology/theme
 
   - field_name: metric
     label: Metric
@@ -88,7 +88,7 @@ dataset_fields:
     skos_choices_sparql_endpoint: https://trusts.poolparty.biz/PoolParty/sparql/PropertiesofTheRegistryofDataMarkets
     skos_choices_concept_scheme: https://trusts.poolparty.biz/PropertiesofTheRegistryofDataMarkets/Time-Frames
     skos_choices_is_poolparty: true
-    display_property: dcat:theme
+    display_property: https://www.trusts-data.eu/ontology/time-frame
 
 resource_fields:
 

@@ -6,11 +6,14 @@ import urllib.parse
 from copy import deepcopy
 from typing import Set, List, Dict
 from urllib.parse import urlparse
+import re
 
 import ckan.lib.dictization
 import ckan.logic as logic
+from ckanext.scheming.helpers import scheming_get_schema, scheming_field_by_name
 import rdflib
 from ckan.common import config
+
 
 from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.metadatabroker.translations_broker_ckan import URI, \
@@ -93,9 +96,11 @@ def _sparql_describe_many_resources(resources: Set[rdflib.URIRef]) -> str:
 
 
 # ToDo uncomment filter statement
-def _sparl_get_all_resources(resource_type: str, fts_query: str, type_pred="https://www.trusts-data.eu/ontology/asset_type"):
+def _sparl_get_all_resources(resource_type: str, fts_query: str, fq: list, facet_fields: list,
+                             limit: int, offset: int, type_pred="https://www.trusts-data.eu/ontology/asset_type"):
     catalogiri = URI(config.get("ckanext.ids.connector_catalog_iri")).n3()
-
+    #TODO: make this resource type specific
+    dataset_schema = scheming_get_schema("dataset", "dataset", True)
     query = """
       PREFIX owl: <http://www.w3.org/2002/07/owl#>
       PREFIX ids: <https://w3id.org/idsa/core/>
@@ -110,6 +115,10 @@ def _sparl_get_all_resources(resource_type: str, fts_query: str, type_pred="http
         FILTER (!regex(str(?externalname),\"""" + config.get(
         'ckanext.ids.local_node_name') + """\",\"i\"))
         """
+    facet_filters = build_facet_filters(fq, facet_fields, dataset_schema)
+    for facet_filter in facet_filters:
+        query += facet_filter
+
     if resource_type is None or resource_type == "None":
         query += "\n ?resultUri " + URI(type_pred).n3() + " ?assettype."
     else:
@@ -121,6 +130,95 @@ def _sparl_get_all_resources(resource_type: str, fts_query: str, type_pred="http
     if fts_query is not None:
         query += "FILTER regex(concat(?title, \" \",?description, \" \",str(?externalname)), \"" + fts_query + "\", \"i\")"
     query += "\n}"
+    query += " LIMIT " + str(limit) + " OFFSET " + str(offset)
+    return query
+
+
+def build_facet_filters(fq: list, facet_fields: list, schema: dict):
+    facets = dictionize_facet_query(fq, facet_fields, schema)
+    facet_filters = []
+    for facet in facets:
+        facet_dict = facets[facet]
+        facet_filter = "?resultUri <" + facet_dict["property"] + "> ?" + facet + ". values ?" + facet +" { " + " ".join(facet_dict["values"]) + " }"
+        facet_filters.append(facet_filter)
+    return facet_filters
+
+
+def dictionize_facet_query(fq: list, facet_fields: list, schema: dict):
+    facets = {}
+    for facet in fq:
+        facet_item = facet.split(":", 1)
+        facet_key = facet_item[0]
+        if facet_key in facet_fields:
+            facet_value = sanitize_facet_value(facet_item[1])
+            if facet_key in facets.keys():
+                facets[facet_key]["values"].append(facet_value)
+            else:
+                scheming_field_by_name(schema["dataset_fields"], facet_key)
+                facets[facet_key] = {
+                    "property" : scheming_field_by_name(schema["dataset_fields"], facet_key)["display_property"],
+                    "values" : [facet_value]
+                }
+    return facets
+
+
+def sanitize_facet_value(value: str):
+    result = value
+    if "http" in value:
+        result = value.lstrip('"').rstrip('"')
+        result = "<" + result + ">"
+    elif value.startswith('"'):
+        result = value.replace('"', '')
+
+    return result
+
+def _sparl_get_facets(resource_type: str, fts_query: str, fq: str, facet_fields, type_pred="https://www.trusts-data.eu/ontology/asset_type"):
+    catalogiri = URI(config.get("ckanext.ids.connector_catalog_iri")).n3()
+    #TODO: make this resource type specific
+    dataset_schema = scheming_get_schema("dataset", "dataset", True)
+    facet_properties = []
+    for facet_field in facet_fields:
+        schema_field = scheming_field_by_name(dataset_schema["dataset_fields"], facet_field)
+        if schema_field is not None:
+            property = schema_field["display_property"]
+            if "://" in property:
+                facet_properties.append(URI(property).n3())
+            else:
+                facet_properties.append(property)
+
+
+    query = """
+          PREFIX  owl:  <http://www.w3.org/2002/07/owl#>
+          PREFIX  ids:  <https://w3id.org/idsa/core/>
+          SELECT  (count(?resultUri) as ?facet_count) (str(?facet) as ?facet_string) (str(?facet_value) as ?facet_value_string)
+          WHERE
+          { graph ?g
+            {  
+                ?conn     ids:offeredResource   ?resultUri .
+                ?resultUri  owl:sameAs            ?externalname .
+                FILTER (!regex(str(?externalname),\"""" + config.get('ckanext.ids.local_node_name') + """\",\"i\"))               
+                OPTIONAL { ?resultUri ?facet ?facet_value }
+                VALUES ?facet { """ + " ".join(facet_properties) + """ } """
+    facet_filters = build_facet_filters(fq, facet_fields, dataset_schema)
+    for facet_filter in facet_filters:
+        query += facet_filter
+    if resource_type is None or resource_type == "None":
+        query += "\n ?resultUri " + URI(type_pred).n3() + " ?assettype."
+    else:
+        typeuri = URI("https://www.trusts-data.eu/ontology/" + \
+                      resource_type.capitalize())
+        query += "\n ?resultUri " + URI(
+            type_pred).n3() + " ?assettype ."
+        query += "\nvalues ?assettype { " + typeuri.n3() + " } "
+    if fts_query is not None:
+        query += "FILTER regex(concat(?title, \" \",?description, \" \",str(?externalname)), \"" + fts_query + "\", \"i\")"
+    query += """ 
+            }
+          }
+          group by ?facet ?facet_value
+          order by ?facet DESC(?facet_count) ?facet_value
+        """
+    # query += " LIMIT " + str(limit) + " OFFSET " + str(offset)
     return query
 
 
@@ -463,7 +561,7 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
 
 
 @ckan.logic.side_effect_free
-def broker_package_search(q=None, start_offset=0, fq=None):
+def broker_package_search(q=None, start_offset=0, limit=None, fq=None, facet_fields=None):
     log.debug("\n--- STARTING  BROKER SEARCH  ----------------------------\n")
     log.debug(str(q))
     log.debug(str(fq))
@@ -490,7 +588,7 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     if False:
     #if len(search_string) > 0 and search_string != default_search:
         raw_response = connector.search_broker(search_string=search_string,
-                                               offset=start_offset)
+                                               offset=start_offset, limit=limit)
         parsed_response = _parse_broker_tabular_response(raw_response)
         resource_uris = set([URI(x["resultUri"])
                              for x in parsed_response
@@ -504,7 +602,8 @@ def broker_package_search(q=None, start_offset=0, fq=None):
             if pm is not None:
                 search_results.append(pm)
     else:
-        general_query = _sparl_get_all_resources(resource_type=requested_type, fts_query=search_string)
+        general_query = _sparl_get_all_resources(resource_type=requested_type, fts_query=search_string,
+                                                 fq=fq, facet_fields=facet_fields, limit=limit, offset=start_offset)
         log.debug("Default search activated---- type:" + str(requested_type))
         # log.debug("QUERY :\n\t" + str(general_query).replace("\n", "\n\t"))
 
@@ -526,6 +625,12 @@ def broker_package_search(q=None, start_offset=0, fq=None):
             pm = create_moot_ckan_result(**res)
             search_results.append(pm)
 
+        facets_query = _sparl_get_facets(resource_type=requested_type, fts_query=search_string, fq=fq, facet_fields=facet_fields)
+        facets_response = connector.query_broker(facets_query)
+
+        parsed_facets_response = _parse_broker_tabular_response(facets_response)
+        facets_result = refactor_facets_parsed_response(parsed_facets_response)
+
     # -- SLOW version
     # descriptions = {
     #     ru.n3(): connector.ask_broker_for_description(ru.n3()[1:-1])
@@ -537,4 +642,61 @@ def broker_package_search(q=None, start_offset=0, fq=None):
     #         search_results.append(pm)
 
     # log.debug("---- END BROKER SEARCH ------------\n-----------\n----\n-----")
-    return search_results
+#    search_results["facets"] = facets
+    response = {}
+    response["results"] = search_results
+    response["facets"] = facets_result
+    #TODO: this should come from a different query, now it is just wrong
+    response["count"] = len(search_results)
+    response["search_facets"] = create_search_facets_object(facets_result)
+    return response
+
+
+def refactor_facets_parsed_response(facets_response):
+    facets_result = {}
+    dataset_schema = scheming_get_schema("dataset", "dataset", True)
+    for facet_response in facets_response:
+        facet_uri = facet_response["facet_string"].replace('"',"")
+        schema_field = scheming_field_by_display_property(dataset_schema["dataset_fields"], facet_uri)
+        if schema_field is not None:
+            result = {facet_response["facet_value_string"].replace('"',""):int(facet_response.get("facet_count"))}
+            field_name = schema_field.get("field_name")
+            if field_name in facets_result:
+                facets_result[field_name].update(result)
+            else:
+                facets_result[field_name] = result
+
+    return facets_result
+
+
+def create_search_facets_object(facets_result:dict):
+    search_facets = {}
+    for key in facets_result.keys():
+        search_facets[key] = {'title': key}
+        items = []
+        for item_key in facets_result[key].keys():
+            items.append({'name':item_key, 'display_name': item_key, 'count': int(facets_result[key][item_key])})
+        search_facets[key].update({'items':items})
+    return search_facets
+
+
+def scheming_field_by_display_property(fields, display_property):
+    """
+    Simple helper to grab a field from a schema field list
+    based on the display property passed. Returns None when not found.
+    """
+    for field in fields:
+        try:
+            if field.get("display_property") == display_property:
+                return field
+        except:
+            pass
+
+
+def strip_scheme(url: str):
+
+    if "opendefinition" in url:
+        pattern = r'^https?:\/\/www.'
+    else:
+        pattern = r'^https?:\/\/'
+    return re.sub(pattern, '', url)
