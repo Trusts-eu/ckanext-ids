@@ -9,6 +9,7 @@ from ckan.common import config
 import ckan.model as model
 from ckan.lib.plugins import DefaultTranslation
 import ckanext.ids.blueprints as blueprints
+import ckanext.ids.swagger as swagger
 import ckanext.ids.validator as validator
 from ckanext.ids.metadatabroker.client import broker_package_search, strip_scheme
 from collections import OrderedDict, Counter
@@ -236,7 +237,7 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
          "ckanext.ids.licenses": dictionize_licenses()})
 
     def get_blueprint(self):
-        return [blueprints.ids]
+        return [blueprints.ids, swagger.swaggerui_blueprint]
 
     plugins.implements(plugins.IFacets, inherit=True)
 
@@ -264,18 +265,20 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
 
         if context.action == "search":
             results_from_broker = self.retrieve_results_from_broker(search_params)
-            search_results["results"] = results_from_broker["results"]
-            search_results["count"] = results_from_broker["count"]
-            search_results["facets"] = results_from_broker["facets"]
-            search_results["search_facets"] = self.retrieve_facet_labels(results_from_broker["search_facets"])
+            if len(results_from_broker) > 0:
+               search_results["results"] = results_from_broker["results"]
+               search_results["count"] = results_from_broker["count"]
+               search_results["facets"] = results_from_broker["facets"]
+               search_results["search_facets"] = self.retrieve_facet_labels(results_from_broker["search_facets"])
         if context.action == "action":
-            results_from_broker = self.retrieve_results_from_broker(search_params)
-            search_results["results"].extend(results_from_broker["results"])
-            search_results["count"] += results_from_broker["count"]
-            search_results["facets"] = self.merge_facets(search_results["facets"], results_from_broker["facets"])
-            search_results["search_facets"] = self.merge_search_facets(search_results["search_facets"], results_from_broker["search_facets"])
+            if len(results_from_broker) > 0:
+                results_from_broker = self.retrieve_results_from_broker(search_params)
+                search_results["results"].extend(results_from_broker["results"])
+                search_results["count"] += results_from_broker["count"]
+                search_results["facets"] = self.merge_facets(search_results["facets"], results_from_broker["facets"])
+                search_results["search_facets"] = self.merge_search_facets(search_results["search_facets"], results_from_broker["search_facets"])
         else:
-            search_results = search_results
+            pass
 
         if "ext_include_tracking" in search_params["extras"]:
             if toolkit.asbool(search_params["extras"]["ext_include_tracking"]):
