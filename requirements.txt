@@ -8,3 +8,4 @@ future>=0.18.2
 six
 requests
 cachetools
+flask_swagger_ui
