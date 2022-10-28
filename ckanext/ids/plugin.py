@@ -24,7 +24,7 @@ from ckanext.ids.recomm.recomm import recomm_recomm_datasets_sidebar
 from ckanext.ids.recomm.recomm import recomm_recomm_services_sidebar
 #dtheiler end
 
-from ckanext.ids.helpers import check_if_contract_offer_exists
+from ckanext.ids.helpers import check_if_contract_offer_exists, has_more_facets, get_facet_items_dict
 from ckanext.scheming.helpers import scheming_get_schema, scheming_field_by_name
 from ckanext.vocabularies.helpers import skos_choices_sparql_helper, skos_choices_get_label_by_value
 # ToDo make sure this logger is set higher
@@ -72,7 +72,10 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
             'ckanext_ids_recomm_applications_sidebar': recomm_applications_sidebar, 
             'ckanext_ids_recomm_datasets_sidebar': recomm_datasets_sidebar, 
             'ckanext_ids_recomm_services_sidebar': recomm_services_sidebar,
-            'ckanext_ids_check_if_contract_offer_exists': check_if_contract_offer_exists
+            'ckanext_ids_check_if_contract_offer_exists': check_if_contract_offer_exists,
+            'get_facet_items_dict': get_facet_items_dict,
+            'has_more_facets' : has_more_facets
+
             }   
     #dtheiler end
     
@@ -366,7 +369,7 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
         licenses = config.get("ckanext.ids.licenses")
         for facet_item_index, facet_item in enumerate(solr_results["license_id"]["items"]):
             display_name = None
-            if facet_item["name"].find("http") is not -1:
+            if facet_item["name"].find("http") != -1:
                 if facet_item["name"].find("cc-zero") > 0 :
                     display_name = "CC0 1.0"
                 else:
