@@ -220,7 +220,8 @@ def transform_usage_control_policies(policies):
 
 def get_usage_control_policies():
     usage_control_policies = load_usage_control_policies()
-    return transform_usage_control_policies(usage_control_policies)
+    transform_usage_control_policies(usage_control_policies)
+    return usage_control_policies
 
 
 def dictionize_licenses():
