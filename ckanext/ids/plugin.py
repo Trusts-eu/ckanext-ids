@@ -374,6 +374,10 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
                 if facet_item["name"].find("cc-zero") > 0 :
                     display_name = "CC0 1.0"
                 else:
-                    display_name = licenses[facet_item["name"]]["title"]
-                solr_results["license_id"]["items"][facet_item_index]["display_name"] = display_name
+                    try:
+                        display_name = licenses[facet_item["name"]]["title"]
+                    except KeyError:
+                        display_name = "Old license url"
+
+                    solr_results["license_id"]["items"][facet_item_index]["display_name"] = display_name
         return solr_results
