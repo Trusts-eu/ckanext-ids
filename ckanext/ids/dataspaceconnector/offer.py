@@ -31,6 +31,7 @@ class Offer:
         self.title = pkg_dict['title']
         self.keywords = pkg_dict['tags']
         self.publisher = pkg_dict['owner_org']
+        self.description = pkg_dict['description']
         additional = {
             "https://www.trusts-data.eu/ontology/asset_type":
                 "https://www.trusts-data.eu/ontology/" + str(pkg_dict[
@@ -63,6 +64,7 @@ class Offer:
             'keywords': self.keywords,
             'publisher': self.publisher,
             'license': self.license,
+            'description':self.description
         #    'catalog_iri': self.catalog_iri,
         #    'offer_iri': self.offer_iri
         }
