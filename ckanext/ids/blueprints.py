@@ -461,6 +461,7 @@ def publish_action(id):
     local_connector_resource_api.add_rule_to_contract(contract=contract_id,
                                                       rule=rules)
     log.debug("Rule added on contract.")
+
     if "extras" not in dataset:
         log.info("Dataset not yet pushed to the local DSC. I will push it now...")
         push_package(id)
