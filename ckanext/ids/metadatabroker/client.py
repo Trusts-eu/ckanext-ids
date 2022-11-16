@@ -12,6 +12,9 @@ import ckan.lib.dictization
 import ckan.logic as logic
 from ckanext.scheming.helpers import scheming_get_schema, scheming_field_by_name
 import rdflib
+from rdflib.plugins.sparql.results.tsvresults import TSVResultParser
+from rdflib.term import Variable
+from io import StringIO
 from ckan.common import config
 
 
@@ -59,21 +62,11 @@ def _grouping_from_table_to_dict(triples_list: List[Dict],
     return result
 
 
-def _parse_broker_tabular_response(raw_text, sep="\t"):
-    readrows = 0
-    result = []
-    for irow, row in enumerate(raw_text.split("\n")):
-        rows = row.strip()
-        if len(rows) < 1:
-            continue
-        vals = rows.split(sep)
-        if irow == 0:
-            colnames = [x.replace("?", "") for x in vals]
-            continue
-        d = {cname: vals[ci].strip()
-             for ci, cname in enumerate(colnames)}
-        result.append(d)
+def _parse_broker_tabular_response(raw_text):
+    parser = TSVResultParser()
+    input = StringIO(raw_text)
 
+    result = parser.parse(source=input)
     return result
 
 
@@ -104,7 +97,7 @@ def _sparl_get_all_resources(resource_type: str, fts_query: str, fq: list, facet
     query = """
       PREFIX owl: <http://www.w3.org/2002/07/owl#>
       PREFIX ids: <https://w3id.org/idsa/core/>
-      SELECT ?resultUri ?type ?title ?description ?assettype ?externalname ?license
+      SELECT ?resultUri ?type ?title ?description ?assettype ?externalname ?license ?creationDate
       WHERE
       { ?resultUri a ?type . 
         ?conn <https://w3id.org/idsa/core/offeredResource> ?resultUri .
@@ -112,6 +105,8 @@ def _sparl_get_all_resources(resource_type: str, fts_query: str, fq: list, facet
         ?resultUri ids:description ?description .
         ?resultUri owl:sameAs ?externalname .
         ?resultUri ids:standardLicense ?license .
+        OPTIONAl {  ?resultUri ids:created ?creationDateTemp . }
+        BIND (str(coalesce(?creationDateTemp, "Not Specified")) as ?creationDate)
         FILTER (!regex(str(?externalname),\"""" + config.get(
         'ckanext.ids.local_node_name') + """\",\"i\"))
         """
@@ -292,7 +287,7 @@ def graphs_to_contracts(raw_jsonld: Dict,
             perms = [perms]
         r = dict()
         r["policies"] = [
-            {"type": permission_graph_dict[per]["description"].upper().replace(
+            {"type": permission_graph_dict[per]["action"].upper().replace(
                 "-", "_")} for per in perms]
         r["contract_start"] = cg["contractStart"]
         r["contract_end"] = cg["contractEnd"]
@@ -317,23 +312,17 @@ def rewrite_urls(provider_base, input_url):
 
 # We pass the results of a query with
 #    SELECT ?resultUri ?type ?title ?description ?assettype WHERE
-def create_moot_ckan_result(resultUri: str,
-                            title: str,
-                            description: str,
-                            assettype: str,
-                            externalname: str,
-                            license: str,
-                            **kwargs):
-    # We remove the < > from URIs
-    if assettype.startswith("<") and assettype.endswith(">"):
-        assettype = assettype[1:-1]
-    if resultUri.startswith("<") and resultUri.endswith(">"):
-        resultUri = resultUri[1:-1]
-    if externalname.startswith("<") and externalname.endswith(">"):
-        externalname = externalname[1:-1]
+def create_moot_ckan_result(binding):
 
-    # log.error("MOOT RESULT FOR " + resultUri + "\t" + title + "~~~~~~~~~~")
-    theirname = externalname
+    license = str(binding[Variable("license")])
+    externalName = str(binding[Variable("externalname")])
+    title = str(binding[Variable("title")])
+    description = str(binding[Variable("description")])
+    resultUri = str(binding[Variable("resultUri")])
+    creationDate = str(binding[Variable("creationDate")])
+    assetType = str(binding[Variable("assettype")])
+
+    theirname = externalName
     organization_name = theirname.split("/")[2].split(":")[0]
     providing_base_url = "/".join(organization_name.split("/")[:3])
     organization_data = {
@@ -359,12 +348,12 @@ def create_moot_ckan_result(resultUri: str,
     packagemeta["license_id"] = license + "LICENSE"
     packagemeta["license_url"] = license + "LICENSE"
     packagemeta["license_title"] = lictit
-    packagemeta["metadata_created"] = datetime.datetime.now().isoformat()
+    packagemeta["metadata_created"] = creationDate
     packagemeta["metadata_modified"] = datetime.datetime.now().isoformat()
     packagemeta["name"] = title
     packagemeta["title"] = title
     packagemeta["description"] = description + "DESCRIPTION"
-    packagemeta["type"] = assettype.split("/")[
+    packagemeta["type"] = assetType.split("/")[
         -1].lower()
     packagemeta["theme"] = "THEME"
     packagemeta["version"] = "VERSION"
@@ -583,7 +572,7 @@ def broker_package_search(q=None, start_offset=0, limit=None, fq=None, facet_fie
 
     # log.debug("Requested search type was " + str(requested_type) + "\n\n")
     search_results = []
-    resource_uris = []
+
 
     if False:
     #if len(search_string) > 0 and search_string != default_search:
@@ -610,19 +599,17 @@ def broker_package_search(q=None, start_offset=0, limit=None, fq=None, facet_fie
         raw_response = connector.query_broker(general_query)
 
         parsed_response = _parse_broker_tabular_response(raw_response)
-        resource_uris = set([URI(x["resultUri"])
-                             for x in parsed_response
-                             if URI(x["type"]) == idsresource])
 
-        if len(resource_uris) > 0:
-            log.debug(str(len(resource_uris)) + "   RESOURCES FOUND "
+        size_of_broker_results = len(parsed_response.bindings)
+        if size_of_broker_results > 0:
+            log.debug(str(size_of_broker_results) + "   RESOURCES FOUND "
                                                 "<------------------------------------\n")
 
-        if len(resource_uris) == 0:
+        if size_of_broker_results == 0:
             return search_results
 
-        for res in parsed_response:
-            pm = create_moot_ckan_result(**res)
+        for res in parsed_response.bindings:
+            pm = create_moot_ckan_result(res)
             search_results.append(pm)
 
         facets_query = _sparl_get_facets(resource_type=requested_type, fts_query=search_string, fq=fq, facet_fields=facet_fields)
@@ -655,11 +642,11 @@ def broker_package_search(q=None, start_offset=0, limit=None, fq=None, facet_fie
 def refactor_facets_parsed_response(facets_response):
     facets_result = {}
     dataset_schema = scheming_get_schema("dataset", "dataset", True)
-    for facet_response in facets_response:
-        facet_uri = facet_response["facet_string"].replace('"',"")
+    for facet_response in facets_response.bindings:
+        facet_uri = str(facet_response[Variable("facet_string")])
         schema_field = scheming_field_by_display_property(dataset_schema["dataset_fields"], facet_uri)
         if schema_field is not None:
-            result = {facet_response["facet_value_string"].replace('"',""):int(facet_response.get("facet_count"))}
+            result = {str(facet_response[Variable("facet_value_string")]):int(str(facet_response[Variable("facet_count")]))}
             field_name = schema_field.get("field_name")
             if field_name in facets_result:
                 facets_result[field_name].update(result)
