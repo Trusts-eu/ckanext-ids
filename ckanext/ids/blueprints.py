@@ -188,19 +188,23 @@ def push_to_dataspace_connector(data):
                 value["artifact"] = None
 
     if offer.offer_iri is not None:
+        log.info("Checking if offer can be updated:" + offer.offer_iri)
         if local_dsc_api.update_offered_resource(
                 offer.offer_iri, offer.to_dictionary()):
+            log.info("Success! Offer updated!")
             offers = offer.offer_iri
         else:
             # The offer does not exist on the dataspace connector. This might mean that the offer was manually deleted or
             # lost after some restart. The package dictionary contains the iri of the deleted offer so it fails. For now,
             # manually editing the package and the resources is needed, or even deleting the package and create from scratch.
             # We should implement a method to do this through the admin/manage menu
-            log.error("Offer not found on the Dataspace Connector.")
+            log.warn("Offer not found on the Dataspace Connector.")
             return False
     else:
+        log.info("Offer was not found, creating a new one on the dataspace connector.")
         offers = local_dsc_api.create_offered_resource(
             offer.to_dictionary())
+        log.info("Adding resource to catalg.")
         local_dsc_api.add_resource_to_catalog(catalog,
                                               offers)
     # adding resources
@@ -717,9 +721,9 @@ def get_data():
 # endpoint to create a subscription
 @ids_actions.route('/ids/actions/subscribe', methods=['GET'])
 def subscribe():
-
+    g = plugins.toolkit.g
     offer_url= request.args.get("offer_url")
-    subscriber_email=request.args.get("subscriber_email")
+    subscriber_email= g.userobj.email
 
     local_connector = Connector()
 
@@ -739,7 +743,7 @@ def subscribe():
     else:
         try:
             local_agreements = local_resource.get_agreements()
-            subscription = Subscription(resourceId, local_agreements[0])
+            subscription = Subscription(resourceId, local_agreements[0], subscriber_email)
             subscription.subscribe()
         except AttributeError:
             local_agreements = []

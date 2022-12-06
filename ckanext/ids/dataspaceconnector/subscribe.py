@@ -31,9 +31,10 @@ class Subscription:
     route = None
 
 
-    def __init__(self, offer_url, agreement):
+    def __init__(self, offer_url, agreement, user_email):
         self.offer_url = offer_url
         self.agreement = agreement
+        self.user_email = user_email
 
         parsed_url = urlparse(offer_url)
         self.provider_alias = parsed_url.scheme + "://" + parsed_url.netloc
@@ -125,7 +126,7 @@ class Subscription:
 
     def create_endpoint(self):
         data = {
-            "location": "http://note-service:5055/notify",
+            "location": "http://note-service:5055/notify?ids-toemail=" + self.user_email,
             "type": "GENERIC"
         }
         endpoint = consumer.create_endpoint(data)
