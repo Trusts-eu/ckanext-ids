@@ -23,10 +23,11 @@ from ckanext.ids.dataspaceconnector.connector import Connector
 from ckanext.ids.dataspaceconnector.contract import Contract
 from ckanext.ids.dataspaceconnector.offer import Offer
 from ckanext.ids.dataspaceconnector.resource import Resource
+from ckanext.ids.dataspaceconnector.subscribe import Subscription
 from ckanext.ids.metadatabroker.client import graphs_to_artifacts
 from ckanext.ids.metadatabroker.client import graphs_to_ckan_result_format
 from ckanext.ids.metadatabroker.client import graphs_to_contracts
-from ckanext.ids.model import IdsResource, IdsAgreement
+from ckanext.ids.model import IdsResource, IdsAgreement, IdsSubscription
 from ckanext.ids.activity import create_pushed_to_dataspace_connector_activity, create_created_contract_activity
 
 #dtheiler start
@@ -712,6 +713,45 @@ def get_data():
     )
     response.headers["Content-Disposition"] = "attachment;filename="+filename
     return response
+
+# endpoint to create a subscription
+@ids_actions.route('/ids/actions/subscribe', methods=['GET'])
+def subscribe():
+
+    offer_url= request.args.get("offer_url")
+    subscriber_email=request.args.get("subscriber_email")
+
+    local_connector = Connector()
+
+    graphs = local_connector.ask_broker_for_description(
+        element_uri=offer_url)
+
+    #  This is failing
+    dataset = graphs_to_ckan_result_format(graphs)
+    # Here we get the local agreements, if they exist
+    # --------------------------------------------------------------------
+    resourceId = dataset["id"]
+    local_resource = IdsResource.get(resourceId)
+    if local_resource is None:
+        h.flash_error(
+            _('An aggreement does not exist yet. Please accept a contract first.'))
+        return toolkit.redirect_to('/ids/processExternal?uri=' + offer_url)
+    else:
+        try:
+            local_agreements = local_resource.get_agreements()
+            subscription = Subscription(resourceId, local_agreements[0])
+            subscription.subscribe()
+        except AttributeError:
+            local_agreements = []
+        return {"offer_url": offer_url, "subscriber_email": subscriber_email}
+
+
+@ids_actions.route('/ids/actions/unsubscribe', methods=['GET'])
+def unsubscribe():
+    subscription_url = request.args.get("subscription_url")
+    subscription = IdsSubscription.get(subscription_url)
+    subscription.delete()
+
 
 def create_external_package(data):
     # get clean data from the form, data will hold the common meta for all resources
