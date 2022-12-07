@@ -198,13 +198,15 @@ def push_to_dataspace_connector(data):
             # lost after some restart. The package dictionary contains the iri of the deleted offer so it fails. For now,
             # manually editing the package and the resources is needed, or even deleting the package and create from scratch.
             # We should implement a method to do this through the admin/manage menu
-            log.warn("Offer not found on the Dataspace Connector.")
-            return False
+            message = "Offer not found on the Dataspace Connector."
+            result = {"pushed" : False, "message": message}
+            log.warn(message)
+            return result
     else:
         log.info("Offer was not found, creating a new one on the dataspace connector.")
         offers = local_dsc_api.create_offered_resource(
             offer.to_dictionary())
-        log.info("Adding resource to catalg.")
+        log.info("Adding resource to catalog.")
         local_dsc_api.add_resource_to_catalog(catalog,
                                               offers)
     # adding resources
@@ -236,13 +238,14 @@ def push_to_dataspace_connector(data):
         if resource.representation_iri is None:
             representation = local_dsc_api.create_representation(
                 representation_metadata)
-            local_dsc_api.add_representation_to_resource(
-                offers, representation)
         else:
             local_dsc_api.update_representation(
                 representation_iri=resource.representation_iri,
                 data=representation_metadata)
             representation = resource.representation_iri
+
+        local_dsc_api.add_representation_to_resource(
+                offers, representation)
 
         # The site_url of CKAN is accessible to the whole world, but not to the
         # DSC. This is specially true if the deployment is local and then
@@ -253,27 +256,27 @@ def push_to_dataspace_connector(data):
         if resource.artifact_iri is None:
             artifact = local_dsc_api.create_artifact(
                 data=artifact_metadata)
-            local_dsc_api.add_artifact_to_representation(
-                representation, artifact)
         else:
             local_dsc_api.update_artifact(
                 resource.artifact_iri,
                 data=artifact_metadata)
             artifact = resource.artifact_iri
-
+            local_dsc_api.add_artifact_to_representation(representation, artifact)
         if "id" in value:
             # add these on the resource meta
             patch_data = {"id": value["id"], "representation": representation,
                           "artifact": artifact}
             logic.action.patch.resource_patch(context, data_dict=patch_data)
 
-    changed_extras = [{"key": "catalog", "value": catalog},
-                      {"key": "offers", "value": offers}]
-    extras = merge_extras(data.get("extras", []), changed_extras)
 
     toolkit.get_action("package_patch")(context,
-                                        {"id": data["id"], "extras": extras})
-    if any(dictionary.get('key', '') == 'contract' for dictionary in extras):
+                                        {"id": data["id"],
+                                         "catalog_iri": catalog,
+                                         "offer_iri": offers})
+
+    contracts = local_dsc_api.get_contracts(offers)
+
+    if contracts["page"]["totalElements"] > 0:
         # push to the broker if the package has a contract
         local_connector.send_resource_to_broker(resource_uri=offer.offer_iri)
 
@@ -283,11 +286,16 @@ def push_to_dataspace_connector(data):
             data["type"]) #entityType
         #dtheiler end
     else:
-        log.error("This resource doesn't have any contracts, not pushing to "
-                  "broker")
+        message = "This resource doesn't have any contracts, not pushing to broker"
+        result = {"pushed" : False, "message": message}
+        log.warn(message)
+        return result
 
     create_pushed_to_dataspace_connector_activity(context, data["id"])
-    return True
+    message = "Asset successfully pushed to the TRUSTS Platform"
+    result = {"pushed": True, "message": message}
+    log.info(message)
+    return result
 
 
 def transform_url_internal_network(url: str,
@@ -347,7 +355,7 @@ def push_package(id):
     # this is the asynchronous task
     # response = toolkit.enqueue_job(push_package_task, [package_meta])
     # this is the synchronous task
-    return {"pushed": push_package_task(package_meta)}
+    return push_package_task(package_meta)
     # return json.dumps(response.id)
 
 
@@ -400,12 +408,10 @@ def push_to_smart_contract_component(package_meta, id):
 @ids_actions.route('/ids/view/push_package/<id>', methods=['GET'])
 def push_package_view(id):
     response = push_package(id)
-    if response:
-        h.flash_success(_('Object pushed to the DataspaceConnector Catalog.'))
+    if response["pushed"]:
+        h.flash_success(response["message"])
     else:
-        h.flash_error(
-            _('Offer not found on the Dataspace Connector. Perhaps it was deleted manually on'
-              ' the Dataspace Connector. Contact your adinistrator'))
+        h.flash_error(response["message"])
     return toolkit.redirect_to('dataset.read', id=id)
 
 
@@ -449,13 +455,13 @@ def publish_action(id):
     else:
         contract_meta = Contract(request.get_json())
     # create the contract
-    contract_id = local_connector_resource_api.create_contract(
-        {
-            "start": contract_meta.contract_start.isoformat(),
-            "end": contract_meta.contract_end.isoformat(),
-            "title": contract_meta.title
-        }
-    )
+    contract_info = {
+        "start": contract_meta.contract_start.isoformat(),
+        "end": contract_meta.contract_end.isoformat(),
+        "title": contract_meta.title,
+        "policies": json.dumps(contract_meta.policies)
+    }
+    contract_id = local_connector_resource_api.create_contract(contract_info)
     # create the rules
     rules = []
     for policy in contract_meta.policies:
@@ -465,43 +471,24 @@ def publish_action(id):
     # add rules to contract
     local_connector_resource_api.add_rule_to_contract(contract=contract_id,
                                                       rule=rules)
-    log.debug("Rule added on contract.")
+    log.debug("Rules added on contract.")
 
-    if "extras" not in dataset:
-        log.info("Dataset not yet pushed to the local DSC. I will push it now...")
+    try:
+        resource_id = dataset["offer_iri"]
+        assert resource_id != ""
+    except (KeyError, AssertionError):
+        log.info("Asset not yet pushed to the local DSC. I will push it now...")
         push_package(id)
         dataset = toolkit.get_action('package_show')(context, {'id': id})
-        log.info("Done")
-    resource_id = \
-        next((sub for sub in dataset["extras"] if sub['key'] == 'offers'),
-             None)[
-            "value"]
+        log.info("Pushing to the local DSC, Done!")
     local_connector_resource_api.add_contract_to_resource(resource=resource_id,
 
                                                           contract=contract_id)
     log.debug("Contract added to resource")
-    extras = dataset["extras"]
-    # If this already had a contract, we overwrite it
-    # Otherwise we get a duplicate-error from the package_patch action below
-    contract_found = False
-    for d in extras:
-        if d["key"] == "contract":
-            d["value"] = contract_id
-            contract_found = True
-        if d["key"] == "contract_meta":
-            d["value"] = contract_meta.toJSON()
-    if not contract_found:
-        extras.append({"key": "contract", "value": contract_id})
-        extras.append(
-            {"key": "contract_meta", "value": contract_meta.toJSON()})
-
-    updated_package = toolkit.get_action("package_patch")(context, {"id": id,
-                                                                    "extras": extras})
     log.info("Sending resource to broker")
     bs = local_connector.send_resource_to_broker(resource_uri=resource_id)
     log.info("Resource was sent to broker.")
-
-    create_created_contract_activity(context, updated_package["id"])
+    create_created_contract_activity(context, dataset["id"])
     return {"broker success": bs}
 
 
@@ -540,19 +527,16 @@ def publish(id, offering_info=None, errors=None):
 
 @ids_actions.route('/ids/view/contracts/<id>', methods=['GET'])
 def contracts(id, offering_info=None, errors=None):
+    local_connector = Connector()
+    local_dsc_api = local_connector.get_resource_api()
     c = plugins.toolkit.g
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
     dataset = toolkit.get_action('package_show')(context, {'id': id})
     c.contracts = []
-    if "extras" in dataset.keys():
-        c.pkg_dict = dataset
-        possible_contracts = [sub for sub in dataset["extras"]
-                              if sub['key'] == 'contract_meta']
-        if len(possible_contracts) > 0:
-            contract = json.loads(next(iter(possible_contracts))["value"])
-            c.contracts = [contract]
+    contracts = local_dsc_api.get_contracts(dataset["offer_iri"])
+    c.contracts = contracts["_embedded"]["contracts"]
     c.data = dataset
     return toolkit.render('package/contracts.html',
                           extra_vars={

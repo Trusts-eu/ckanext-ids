@@ -24,7 +24,7 @@ from ckanext.ids.recomm.recomm import recomm_recomm_datasets_sidebar
 from ckanext.ids.recomm.recomm import recomm_recomm_services_sidebar
 #dtheiler end
 
-from ckanext.ids.helpers import check_if_contract_offer_exists, has_more_facets, get_facet_items_dict
+from ckanext.ids.helpers import check_if_contract_offer_exists, has_more_facets, get_facet_items_dict, string_to_json
 from ckanext.scheming.helpers import scheming_get_schema, scheming_field_by_name
 from ckanext.vocabularies.helpers import skos_choices_sparql_helper, skos_choices_get_label_by_value
 # ToDo make sure this logger is set higher
@@ -74,7 +74,8 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
             'ckanext_ids_recomm_services_sidebar': recomm_services_sidebar,
             'ckanext_ids_check_if_contract_offer_exists': check_if_contract_offer_exists,
             'get_facet_items_dict': get_facet_items_dict,
-            'has_more_facets' : has_more_facets
+            'has_more_facets' : has_more_facets,
+            "string_to_json" : string_to_json
 
             }   
     #dtheiler end

@@ -1,4 +1,5 @@
 import logging
+import json
 from ckan.common import is_flask_request
 
 from ckan.common import _, c, request
@@ -9,6 +10,8 @@ log = logging.getLogger(__name__)
 def check_if_contract_offer_exists(id):
     return True
 
+def string_to_json(json_string):
+    return json.loads(json_string)
 
 def get_facet_items_dict(
         facet, search_facets=None, limit=None, exclude_active=False):

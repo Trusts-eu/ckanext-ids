@@ -1,33 +1,33 @@
 <li class="resource-item" data-id="{{ contract.id }}">
     {% set contract_url = url if not 'external_provider_name' in pkg else "#" %}
+    {% set policies = h.string_to_json(contract.additional.policies) %}
     {% block contract_item_title %}
         <a class="heading" href="{{ contract_url }}" title="{{ contract.title }}">
             {{ contract.title    }}
         </a>
     {% endblock %}
     {% block contract_dates %}
-        <div> <b>Start date:</b> {{ contract.contract_start }}</div>
-        <div> <b>End date:</b> {{ contract.contract_end }}</div>
+        <div> <b>Start date:</b> {{ contract.start }}</div>
+        <div> <b>End date:</b> {{ contract.end }}</div>
     {% endblock %}
     {% block policies %}
         <br>Policies:</br>
         <ul>
 
-        {% for policy in contract.policies %}
+        {% for policy in policies %}
             <li>
+                {% set attributes = policy.keys()|list %}
+                {% set _ = attributes.remove("type") %}
                 {{ policy.type }}
-                {#% set attributes = list(policy) %#}
-                {#  { attributes.remove("type") }} #}
-                {#{% if attributes|length > 0 %}
+                {% if attributes|length > 0 %}
                     <ul>
-
                     {% for attribute in attributes %}
                         <li>
                             <b>{{ attribute }}:</b> {{ policy[attribute] }}
                         </li>
                     {% endfor %}
                     </ul>
-                {% endif %} #}
+                {% endif %}
             </li>
         {% endfor %}
         </ul>

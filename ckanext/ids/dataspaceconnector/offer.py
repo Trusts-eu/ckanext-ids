@@ -45,15 +45,15 @@ class Offer:
         if "license_url" in pkg_dict.keys():
             self.license = pkg_dict["license_url"]
 
-        if "extras" in pkg_dict:
-            for entry in pkg_dict["extras"]:
-                if entry["key"] == "catalog":
-                    self.catalog_iri = entry["value"]
-                if entry["key"] == "offers":
-                    self.offer_iri = entry["value"]
+        if "offer_iri" in pkg_dict.keys():
+            self.offer_iri = pkg_dict["offer_iri"] if pkg_dict["offer_iri"] != "" else None
+        else:
+            self.offer_iri = None
+
+        if "catalog_iri" in pkg_dict.keys():
+            self.catalog_iri = pkg_dict["catalog_iri"] if pkg_dict["catalog_iri"] != "" else None
         else:
             self.catalog_iri = None
-            self.offer_iri = None
 
         logging.debug("\n----------------------------OFFER|")
 
@@ -64,7 +64,7 @@ class Offer:
             'keywords': self.keywords,
             'publisher': self.publisher,
             'license': self.license,
-            'description':self.description
+            'description': self.description,
         #    'catalog_iri': self.catalog_iri,
         #    'offer_iri': self.offer_iri
         }

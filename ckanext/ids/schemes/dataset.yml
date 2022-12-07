@@ -77,6 +77,21 @@ dataset_fields:
     help_text: How to Cite this Dataset
     display_property: edmi:referencecitation
 
+  - field_name: catalog_iri
+    validators: ignore_missing
+    form_snippet: null
+    display_snippet: null
+
+  - field_name: offer_iri
+    validators: ignore_missing
+    form_snippet: null
+    display_snippet: null
+
+  - field_name: representation_iri
+    validators: ignore_missing
+    form_snippet: null
+    display_snippet: null
+
   - field_name: TimeFrame
     label:
       en: Time Frame

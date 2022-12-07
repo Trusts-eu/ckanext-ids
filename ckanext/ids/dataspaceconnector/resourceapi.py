@@ -144,6 +144,15 @@ class ResourceApi:
         response = self.session.post(self.recipient + "/api/rules", json=data)
         return response.headers["Location"]
 
+    def get_contracts(self, url):
+        contracts_url = url + "/contracts"
+        response = self.session.get(contracts_url)
+        print("GETting contracts:", response.status_code,
+              "url:", contracts_url)
+        if response.status_code > 299:
+            raise IOError(response.text)
+        return json.loads(response.text)
+
     def add_resource_to_catalog(self, catalog, resource):
         return self.session.post(
             catalog + "/offers", json=self.toListIfNeeded(resource)
