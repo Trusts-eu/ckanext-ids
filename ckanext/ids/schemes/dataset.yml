@@ -78,19 +78,10 @@ dataset_fields:
     display_property: edmi:referencecitation
 
   - field_name: catalog_iri
-    validators: ignore_missing
-    form_snippet: null
-    display_snippet: null
+    preset: disabled
 
   - field_name: offer_iri
-    validators: ignore_missing
-    form_snippet: null
-    display_snippet: null
-
-  - field_name: representation_iri
-    validators: ignore_missing
-    form_snippet: null
-    display_snippet: null
+    preset: disabled
 
   - field_name: TimeFrame
     label:
