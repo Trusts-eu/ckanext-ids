@@ -481,6 +481,7 @@ def publish_action(id):
         push_package(id)
         dataset = toolkit.get_action('package_show')(context, {'id': id})
         log.info("Pushing to the local DSC, Done!")
+        resource_id = dataset["offer_iri"]
     local_connector_resource_api.add_contract_to_resource(resource=resource_id,
 
                                                           contract=contract_id)
