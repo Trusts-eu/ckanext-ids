@@ -720,6 +720,7 @@ def subscribe():
     # Here we get the local agreements, if they exist
     # --------------------------------------------------------------------
     resourceId = dataset["id"]
+    log.info("Getting ..." + resourceId)
     local_resource = IdsResource.get(resourceId)
     if local_resource is None:
         h.flash_error(
@@ -727,13 +728,19 @@ def subscribe():
         return toolkit.redirect_to('/ids/processExternal?uri=' + offer_url)
     else:
         try:
+            log.info("Getting local agreements...")
             local_agreements = local_resource.get_agreements()
+            log.info("Creating subscription object...")
             subscription = Subscription(resourceId, local_agreements[0], subscriber_email)
+            log.info("Creating subscription...")
             subscription.subscribe()
-        except AttributeError:
+            log.info("Subscription created successfully!!")
+            response = {"offer_url": offer_url, "subscriber_email": subscriber_email}
+        except AttributeError as error:
+            log.error("There was an error while creating the subscription")
             local_agreements = []
-        return {"offer_url": offer_url, "subscriber_email": subscriber_email}
-
+            response = error.with_traceback()
+        return response
 
 @ids_actions.route('/ids/actions/unsubscribe', methods=['GET'])
 def unsubscribe():
