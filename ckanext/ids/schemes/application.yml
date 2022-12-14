@@ -89,6 +89,12 @@ dataset_fields:
     skos_choices_is_poolparty: true
     display_property: dcat:theme
 
+  - field_name: catalog_iri
+    preset: disabled
+
+  - field_name: offer_iri
+    preset: disabled
+
 resource_fields:
 
 - field_name: url

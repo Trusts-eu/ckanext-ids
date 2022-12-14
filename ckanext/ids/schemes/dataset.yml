@@ -77,12 +77,6 @@ dataset_fields:
     help_text: How to Cite this Dataset
     display_property: edmi:referencecitation
 
-  - field_name: catalog_iri
-    preset: disabled
-
-  - field_name: offer_iri
-    preset: disabled
-
   - field_name: TimeFrame
     label:
       en: Time Frame
@@ -95,6 +89,12 @@ dataset_fields:
     skos_choices_concept_scheme: https://trusts.poolparty.biz/PropertiesofTheRegistryofDataMarkets/Time-Frames
     skos_choices_is_poolparty: true
     display_property: https://www.trusts-data.eu/ontology/time-frame
+
+  - field_name: catalog_iri
+    preset: disabled
+
+  - field_name: offer_iri
+    preset: disabled
 
 resource_fields:
 

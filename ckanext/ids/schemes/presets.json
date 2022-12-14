@@ -28,11 +28,11 @@
       "preset_name": "disabled",
       "values": {
         "validators": "ignore_missing",
-        "form_snippet": "disabled.html",
+        "form_snippet": "text.html",
         "display_snippet": null,
         "form_placeholder": "...this will be filled automatically.",
         "form_attrs": {
-          "disabled": ""
+          "readonly": ""
         }
       }
     }
