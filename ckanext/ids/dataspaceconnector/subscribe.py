@@ -5,9 +5,9 @@ import ckan.plugins.toolkit as toolkit
 import pathlib
 from ckanext.ids.model import IdsResource, IdsAgreement, IdsSubscription
 from urllib.parse import urlparse
-from ckanext.vocabularies.dsc.resourceapi import ResourceApi
-from ckanext.vocabularies.dsc.subscriptionapi import SubscriptionApi
-from ckanext.vocabularies.dsc.idsapi import IdsApi
+from ckanext.ids.dataspaceconnector.resourceapi import ResourceApi
+from ckanext.ids.dataspaceconnector.subscriptionapi import SubscriptionApi
+from ckanext.ids.dataspaceconnector.idsapi import IdsApi
 
 log = logging.getLogger("ckanext.ids.dsc.subscribe")
 

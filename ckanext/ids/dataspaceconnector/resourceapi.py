@@ -193,6 +193,12 @@ class ResourceApi:
     def get_artifacts_for_agreement(self, agreement):
         return json.loads(self.session.get(agreement + "/artifacts").text)
 
+    def get_representations_for_artifact(self, artifact):
+        return json.loads(self.session.get(artifact + "/representations").text)
+
+    def get_requests_for_representation(self, representation):
+        return json.loads(self.session.get(representation + "/requests").text)
+
     def descriptionRequest(self, recipient, elementId):
         url = self.recipient + "/api/ids/description"
         params = {}
