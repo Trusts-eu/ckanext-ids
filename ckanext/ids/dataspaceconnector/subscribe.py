@@ -44,16 +44,16 @@ class Subscription:
 
     def subscribe(self):
        # self.create_data_source()
-        log.debug("creating endpoint...")
-        self.create_endpoint()
-        log.debug("endpoint created!")
-      #  self.link_endpoint_data_source()
-        log.debug("creating route...")
-        self.create_route()
-        log.debug("route created!")
-        log.debug("linking endpoint to route...")
-        self.link_endpoint_route()
-        log.debug("linking completed!")
+       # log.debug("creating endpoint...")
+       # self.create_endpoint()
+       # log.debug("endpoint created!")
+       #  self.link_endpoint_data_source()
+       # log.debug("creating route...")
+       # self.create_route()
+       # log.debug("route created!")
+       # log.debug("linking endpoint to route...")
+       # self.link_endpoint_route()
+       # log.debug("linking completed!")
         log.debug("getting local agreement")
         local_agreement = self.agreement
         log.debug("agreement retrieved!")
@@ -73,9 +73,9 @@ class Subscription:
         data = {
             "title": "CKAN on " + local_node + " asset subscription: " + self.offer_url,
             "description": first_request,
-            "target": first_request.replace(local_node + ":8282", "http://locahlost:8080"),
-            "location": self.route.replace(local_node + ":8282", "http://localhost:8080"),
-            "subscriber":  local_node + ":5000",
+            "target": first_request.replace,
+            "location": "http://note-service:5055/notify?ids-toemail=" + self.user_email,
+            "subscriber":  self.user_email,
             "pushData": "false",
         }
         log.debug(data)
@@ -139,7 +139,7 @@ class Subscription:
 
     def create_route(self):
         data = {
-            "title": "Vocabulary Update Route",
+            "title": "Notification service Update Route",
             "deploy": "Camel"
         }
         response = consumer.create_route(data)
