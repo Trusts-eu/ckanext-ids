@@ -75,7 +75,7 @@ class Subscription:
             "description": first_request,
             "target": first_request,
             "location": "http://note-service:5055/notify?ids-toemail=" + self.user_email,
-            "subscriber":  self.user_email,
+            "subscriber":  "http://note-service:5055/notify?ids-toemail=" + self.user_email,
             "pushData": "false",
         }
         log.debug(data)
