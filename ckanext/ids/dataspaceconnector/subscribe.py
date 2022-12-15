@@ -73,7 +73,7 @@ class Subscription:
         data = {
             "title": "CKAN on " + local_node + " asset subscription: " + self.offer_url,
             "description": first_request,
-            "target": first_request.replace,
+            "target": first_request,
             "location": "http://note-service:5055/notify?ids-toemail=" + self.user_email,
             "subscriber":  self.user_email,
             "pushData": "false",
