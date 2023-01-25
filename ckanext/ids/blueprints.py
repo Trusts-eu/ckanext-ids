@@ -655,22 +655,21 @@ def contract_accept():
     #dtheiler end
 
     # stefan_gindl start
-    # Code for transferring assets. Just uncomment. Debugging required.
-    # dict_smart_contracts = {
-    #     "channel": "mychannel",
-    #     "msp": "Org1MSP",
-    #     "orguid": "Org1_appuser",
-    #     "assetid": data['resourceId'],
-    #     "target": config.get("ckanext.ids.connector_catalog_iri"),
-    # }
-    # r = send_request_to_smart_contract_api(
-    #     'basic_transfer_asset',
-    #     dict_smart_contracts,
-    # )
-    # msg_smart_contracts = r.json()['message']
-    # print("=============== SMART CONTRACT::TR OUTPUT START ==================")
-    # print(msg_smart_contracts)
-    # print("=============== SMART CONTRACT OUTPUT END ==================")
+    dict_smart_contracts = {
+        "channel": "mychannel",
+        "msp": "Org1MSP",
+        "orguid": "Org1_appuser",
+        "assetid": data['resourceId'],
+        "target": config.get("ckanext.ids.connector_catalog_iri"),
+    }
+    r = send_request_to_smart_contract_api(
+        'basic_transfer_asset',
+        dict_smart_contracts,
+    )
+    msg_smart_contracts = r.json()['message']
+    print("=============== SMART CONTRACT::TR OUTPUT START ==================")
+    print(msg_smart_contracts)
+    print("=============== SMART CONTRACT OUTPUT END ==================")
     # stefan_gindl end
 
     return agreement_response
