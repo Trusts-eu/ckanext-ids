@@ -134,7 +134,7 @@ paths:
     post:
       tags:
         - assets
-      summary: Create an artifact in the local TRUSTS node
+      summary: Create an asset in the local TRUSTS node
       description: DX
       operationId: Create_Asset
       parameters:
@@ -219,6 +219,12 @@ paths:
           required: true
           schema:
             type: string
+
+securitySchemes:
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
 
 components:
   schemas:
