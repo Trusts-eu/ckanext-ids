@@ -22,10 +22,11 @@ super() }}{% endblock %}
             </p>
         </div>
     </section>
-
-	{% block recomm_entity_sidebar %}
-		{% snippet 'package/snippets/recomm_entity_sidebar.html', entity=g.pkg_dict, count=3 %}
-	{% endblock %}
+    {% if "trusts_recommender" in g.plugins %}
+        {% block recomm_entity_sidebar %}
+            {% snippet 'package/snippets/recomm_entity_sidebar.html', entity=g.pkg_dict, count=3 %}
+        {% endblock %}
+    {% endif %}
 {% endblock %}
 
 

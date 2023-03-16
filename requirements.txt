@@ -1,5 +1,5 @@
 git+https://github.com/ckan/ckanext-scheming.git#egg=ckanext-scheming
-git+https://github.com/ckan/ckanext-dcat.git#egg=ckanext-dcat
+#git+https://github.com/ckan/ckanext-dcat.git#egg=ckanext-dcat
 rdflib==4.2.1
 rdflib-jsonld==0.4.0
 geomet>=0.2.0

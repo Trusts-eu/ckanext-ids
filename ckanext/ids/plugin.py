@@ -27,6 +27,7 @@ from ckanext.ids.recomm.recomm import recomm_recomm_services_sidebar
 from ckanext.ids.helpers import check_if_contract_offer_exists, has_more_facets, get_facet_items_dict, string_to_json
 from ckanext.scheming.helpers import scheming_get_schema, scheming_field_by_name
 from ckanext.vocabularies.helpers import skos_choices_sparql_helper, skos_choices_get_label_by_value
+
 # ToDo make sure this logger is set higher
 log = logging.getLogger("ckanext")
 
@@ -56,29 +57,16 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.IOrganizationController, inherit=True)
     plugins.implements(plugins.ITranslation)
     plugins.implements(plugins.IValidators)
-    
-    #dtheiler start
+
     plugins.implements(plugins.ITemplateHelpers)
-    
+
     def get_helpers(self):
-    
-        # Template helper function names should begin with the name of the
-        # extension they belong to, to avoid clashing with functions from
-        # other extensions.
         return {
-            'ckanext_ids_recomm_datasets_homepage': recomm_datasets_homepage, 
-            'ckanext_ids_recomm_services_homepage': recomm_services_homepage, 
-            'ckanext_ids_recomm_applications_homepage': recomm_applications_homepage, 
-            'ckanext_ids_recomm_applications_sidebar': recomm_applications_sidebar, 
-            'ckanext_ids_recomm_datasets_sidebar': recomm_datasets_sidebar, 
-            'ckanext_ids_recomm_services_sidebar': recomm_services_sidebar,
             'ckanext_ids_check_if_contract_offer_exists': check_if_contract_offer_exists,
             'get_facet_items_dict': get_facet_items_dict,
-            'has_more_facets' : has_more_facets,
-            "string_to_json" : string_to_json
-
-            }   
-    #dtheiler end
+            'has_more_facets': has_more_facets,
+            'string_to_json': string_to_json
+            }
     
     def get_validators(self):
         return {
@@ -185,12 +173,6 @@ def assert_config():
                 'Configuration property {0} was not set. '
                 'Please fix your configuration.'.format(
                     key))
-
-
-#        try:
-#            assert toolkit.config.get(key) is not ''
-#        except AssertionError:
-#            raise EnvironmentError('Configuration property {0} was set but was empty string. Please fix your configuration.'.format(key))
 
 
 # used to load the policy templates from a local json file. A default is already provided.
@@ -382,3 +364,29 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
 
                     solr_results["license_id"]["items"][facet_item_index]["display_name"] = display_name
         return solr_results
+
+
+class TrustsRecommenderPlugin(plugins.SingletonPlugin):
+    plugins.implements(plugins.ITemplateHelpers)
+   # plugins.implements(plugins.IConfigurer, inherit=True)
+
+    #def update_config(self, config_):
+     #   toolkit.add_template_directory(config_, 'templates_recommender')
+    def get_helpers(self):
+        return {
+            'ckanext_ids_recomm_datasets_homepage': recomm_datasets_homepage,
+            'ckanext_ids_recomm_services_homepage': recomm_services_homepage,
+            'ckanext_ids_recomm_applications_homepage': recomm_applications_homepage,
+            'ckanext_ids_recomm_applications_sidebar': recomm_applications_sidebar,
+            'ckanext_ids_recomm_datasets_sidebar': recomm_datasets_sidebar,
+            'ckanext_ids_recomm_services_sidebar': recomm_services_sidebar
+        }
+    # IBlueprint
+    plugins.implements(plugins.IBlueprint)
+
+    def get_blueprint(self):
+        return [blueprints.trusts_recommender]
+
+
+class TrustsBlockchainPlugin(plugins.SingletonPlugin):
+    pass

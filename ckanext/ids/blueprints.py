@@ -64,8 +64,20 @@ ids_actions = Blueprint(
     __name__
 )
 
+trusts_recommender = Blueprint(
+    'trusts_recommender',
+    __name__
+)
+
+trusts_blockchain = Blueprint(
+    'trusts_blockchain',
+    __name__
+)
+
 log = logging.getLogger(__name__)
 
+trusts_recommender_plugin_name = "trusts_recommender"
+trusts_blockchain_plugin_name = "trusts_blockchain"
 
 def request_contains_mandatory_files():
     return request.files[
@@ -280,11 +292,12 @@ def push_to_dataspace_connector(data):
         # push to the broker if the package has a contract
         local_connector.send_resource_to_broker(resource_uri=offer.offer_iri)
 
-        #dtheiler start
-        recomm_store_publish_interaction(
-            offer.offer_iri, #entityId
-            data["type"]) #entityType
-        #dtheiler end
+        if trusts_recommender_plugin_name in toolkit.g.plugins:
+            #dtheiler start
+            recomm_store_publish_interaction(
+                offer.offer_iri, #entityId
+                data["type"]) #entityType
+            #dtheiler end
     else:
         message = "This resource doesn't have any contracts, not pushing to broker"
         result = {"pushed" : False, "message": message}
@@ -545,7 +558,7 @@ def contracts(id, offering_info=None, errors=None):
                           })
 
 #dtheiler start
-@ids_actions.route('/ids/actions/store_download_interaction', methods=['POST'])
+@trusts_recommender.route('/ids/actions/store_download_interaction', methods=['POST'])
 def store_download_interaction():
 
     data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
@@ -554,7 +567,7 @@ def store_download_interaction():
 
     return "true"
 
-@ids_actions.route('/ids/actions/store_view_recomm_interaction', methods=['POST'])
+@trusts_recommender.route('/ids/actions/store_view_recomm_interaction', methods=['POST'])
 def store_view_recomm_interaction():
 
     data = clean_dict(dict_fns.unflatten(tuplize_dict(parse_params(request.form))))
@@ -651,26 +664,28 @@ def contract_accept():
     #        log.debug("\n\n\n\n\n")
 
     #dtheiler start
-    recomm_store_accept_contract_interaction(data['resourceId'])
+    if trusts_recommender_plugin_name in toolkit.g.plugins:
+        recomm_store_accept_contract_interaction(data['resourceId'])
     #dtheiler end
 
-    # stefan_gindl start
-    dict_smart_contracts = {
-        "channel": "mychannel",
-        "msp": "Org1MSP",
-        "orguid": "Org1_appuser",
-        "assetid": data['resourceId'],
-        "target": config.get("ckanext.ids.connector_catalog_iri"),
-    }
-    r = send_request_to_smart_contract_api(
-        'basic_transfer_asset',
-        dict_smart_contracts,
-    )
-    msg_smart_contracts = r.json()['message']
-    print("=============== SMART CONTRACT::TR OUTPUT START ==================")
-    print(msg_smart_contracts)
-    print("=============== SMART CONTRACT OUTPUT END ==================")
-    # stefan_gindl end
+    if trusts_blockchain_plugin_name in toolkit.g.plugins:
+        # stefan_gindl start
+        dict_smart_contracts = {
+            "channel": "mychannel",
+            "msp": "Org1MSP",
+            "orguid": "Org1_appuser",
+            "assetid": data['resourceId'],
+            "target": config.get("ckanext.ids.connector_catalog_iri"),
+        }
+        r = send_request_to_smart_contract_api(
+            'basic_transfer_asset',
+            dict_smart_contracts,
+        )
+        msg_smart_contracts = r.json()['message']
+        print("=============== SMART CONTRACT::TR OUTPUT START ==================")
+        print(msg_smart_contracts)
+        print("=============== SMART CONTRACT OUTPUT END ==================")
+        # stefan_gindl end
 
     return agreement_response
     # resource = local_connector_resource_api.descriptionRequest(data['provider_url'] + "/api/ids/data", data['resourceId'])
@@ -840,12 +855,12 @@ def contracts_remote():
     local_resource = IdsResource.get(resourceId)
     # log.debug(json.dumps(dataset,indent=1))
 
-
-    #dtheiler start
-    recomm_store_view_interaction(
-        dataset["id"], #entityId
-        dataset["type"]) #entityType
-    #dtheiler end
+    if trusts_recommender_plugin_name in toolkit.g.plugins:
+        #dtheiler start
+        recomm_store_view_interaction(
+            dataset["id"], #entityId
+            dataset["type"]) #entityType
+        #dtheiler end
 
     try:
         local_agreements = local_resource.get_agreements()
