@@ -368,10 +368,10 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
 
 class TrustsRecommenderPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.ITemplateHelpers)
-   # plugins.implements(plugins.IConfigurer, inherit=True)
+    plugins.implements(plugins.IConfigurer, inherit=True)
 
-    #def update_config(self, config_):
-     #   toolkit.add_template_directory(config_, 'templates_recommender')
+    def update_config(self, config_):
+        toolkit.add_template_directory(config_, 'templates_recommender')
     def get_helpers(self):
         return {
             'ckanext_ids_recomm_datasets_homepage': recomm_datasets_homepage,

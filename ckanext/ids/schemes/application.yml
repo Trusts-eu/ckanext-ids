@@ -51,7 +51,7 @@ dataset_fields:
     skos_choices_sparql_endpoint: https://trusts.poolparty.biz/PoolParty/sparql/Themes
     #skos_choices_concept_scheme: https://trusts.poolparty.biz/Themes/0
     skos_choices_is_poolparty: true
-    display_property: dcat:theme
+    display_property: https://www.trusts-data.eu/ontology/theme
 
   - field_name: metric
     label: Metric
@@ -85,9 +85,10 @@ dataset_fields:
     preset: select
     form_snippet: autocomplete_dropdown.html
     choices_helper: skos_vocabulary_helper
-    skos_choices_sparql_endpoint: https://trusts.poolparty.biz/PoolParty/sparql/TimeFrames
+    skos_choices_sparql_endpoint: https://trusts.poolparty.biz/PoolParty/sparql/PropertiesofTheRegistryofDataMarkets
+    skos_choices_concept_scheme: https://trusts.poolparty.biz/PropertiesofTheRegistryofDataMarkets/Time-Frames
     skos_choices_is_poolparty: true
-    display_property: dcat:theme
+    display_property: https://www.trusts-data.eu/ontology/time-frame
 
   - field_name: catalog_iri
     preset: disabled

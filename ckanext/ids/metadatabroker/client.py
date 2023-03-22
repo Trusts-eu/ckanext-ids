@@ -10,6 +10,7 @@ import re
 
 import ckan.lib.dictization
 import ckan.logic as logic
+import ckan.lib.helpers as h
 from ckanext.scheming.helpers import scheming_get_schema, scheming_field_by_name
 import rdflib
 from rdflib.plugins.sparql.results.tsvresults import TSVResultParser
@@ -18,7 +19,7 @@ from io import StringIO
 from ckan.common import config
 
 
-from ckanext.ids.dataspaceconnector.connector import Connector
+from ckanext.ids.dataspaceconnector.connector import Connector, ConnectorException
 from ckanext.ids.metadatabroker.translations_broker_ckan import URI, \
     empty_result
 
@@ -596,11 +597,15 @@ def broker_package_search(q=None, start_offset=0, limit=None, fq=None, facet_fie
         log.debug("Default search activated---- type:" + str(requested_type))
         # log.debug("QUERY :\n\t" + str(general_query).replace("\n", "\n\t"))
 
-        raw_response = connector.query_broker(general_query)
+        try:
+            raw_response = connector.query_broker(general_query)
+            parsed_response = _parse_broker_tabular_response(raw_response)
+            size_of_broker_results = len(parsed_response.bindings)
+        except ConnectorException as e:
+            log.debug(e.message)
+            h.flash_error("It was not possbile to establish connection to the Broker. Please contact your administrator to investigate further.")
+            size_of_broker_results = 0
 
-        parsed_response = _parse_broker_tabular_response(raw_response)
-
-        size_of_broker_results = len(parsed_response.bindings)
         if size_of_broker_results > 0:
             log.debug(str(size_of_broker_results) + "   RESOURCES FOUND "
                                                 "<------------------------------------\n")
