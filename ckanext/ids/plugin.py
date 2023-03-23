@@ -13,6 +13,8 @@ import ckanext.ids.swagger as swagger
 import ckanext.ids.validator as validator
 from ckanext.ids.metadatabroker.client import broker_package_search, strip_scheme
 from collections import OrderedDict, Counter
+from typing import Any
+
 
 #dtheiler start
 from ckanext.ids.recomm.recomm import recomm_recomm_datasets_homepage
@@ -207,11 +209,35 @@ def get_usage_control_policies():
     return usage_control_policies
 
 
+# TODO: hack licenses till ckan images gets updated to at least 2.10.1
+
+def license_list():
+    '''Return the list of licenses available for datasets on the site.
+
+    :rtype: list of dictionaries
+
+    '''
+    license_register = model.Package.get_license_register()
+    licenses = license_register.values()
+    licenses = [license_dictize(l) for l in licenses]
+    return licenses
+
+def license_dictize(license) -> dict[str, Any]:
+    data = license._data.copy()
+    if 'date_created' in data:
+        value = data['date_created']
+        value = value.isoformat()
+        data['date_created'] = value
+    return data
+
+
 def dictionize_licenses():
     licenses_dict = {}
-    for license in toolkit.get_action("license_list")(None, None):
+    for license in license_list():
         licenses_dict[license["url"]] = license
     return licenses_dict
+
+# end of hack
 
 
 class IdsResourcesPlugin(plugins.SingletonPlugin):

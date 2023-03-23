@@ -5,3 +5,8 @@
     filter: alpha(opacity=0);
     opacity: 0;
 }
+
+/* TODO: hack the cards layout shown on the home page after login. This declaration comes from choices, putting the cards on top */
+.card {
+    transform: translateY(-0%) !important;
+}

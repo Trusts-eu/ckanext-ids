@@ -1,11 +1,14 @@
 {% ckan_extends %}
 
+{% set truncate = truncate or 180 %}
+{% set truncate_title = truncate_title or 80 %}
+
 {% block heading_title %}
-  {% if 'external_provider_name' in package  %}
-    {{  package.external_provider_name  }} :
-    {{  h.link_to(h.truncate(title, truncate_title),
+    {% if 'external_provider_name' in package  %}
+        {{  package.external_provider_name  }} :
+        {{  h.link_to(title|truncate(truncate_title),
 package.to_process_external)  }}
-  {% else %}
-{{ h.link_to(h.truncate(title, truncate_title), h.url_for('%s.read' % package.type, id=package.name)) }}
-  {% endif %}
+    {% else %}
+        {{ h.link_to(title|truncate(truncate_title), h.url_for('%s.read' % package.type, id=package.name)) }}
+    {% endif %}
 {% endblock %}
