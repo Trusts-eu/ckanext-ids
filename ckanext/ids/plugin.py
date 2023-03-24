@@ -265,25 +265,25 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
 
     plugins.implements(plugins.IPackageController, inherit=True)
 
-    def after_delete(self, context, pkg_dict):
+    def after_dataset_delete(self, context, pkg_dict):
         package_meta = toolkit.get_action("package_show")(None, {
             "id": pkg_dict["id"]})
         blueprints.delete_from_dataspace_connector(package_meta)
 
-    def before_search(self, search_params):
+    def before_dataset_search(self, search_params):
         return search_params
 
-    def after_search(self, search_results, search_params):
-        context = plugins.toolkit.c
+    def after_dataset_search(self, search_results, search_params):
+        context = plugins.toolkit.g
 
-        if context.action == "search":
+        if context.view == "search":
             results_from_broker = self.retrieve_results_from_broker(search_params)
             if len(results_from_broker) > 0:
                search_results["results"] = results_from_broker["results"]
                search_results["count"] = results_from_broker["count"]
                search_results["facets"] = results_from_broker["facets"]
                search_results["search_facets"] = self.retrieve_facet_labels(results_from_broker["search_facets"])
-        if context.action == "action":
+        if context.view == "read":
             results_from_broker = self.retrieve_results_from_broker(search_params)
             if len(results_from_broker) > 0:
                 search_results["results"].extend(results_from_broker["results"])
