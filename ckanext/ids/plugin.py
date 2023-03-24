@@ -283,13 +283,14 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
                search_results["count"] = results_from_broker["count"]
                search_results["facets"] = results_from_broker["facets"]
                search_results["search_facets"] = self.retrieve_facet_labels(results_from_broker["search_facets"])
-        if context.view == "read":
-            results_from_broker = self.retrieve_results_from_broker(search_params)
-            if len(results_from_broker) > 0:
-                search_results["results"].extend(results_from_broker["results"])
-                search_results["count"] += results_from_broker["count"]
-                search_results["facets"] = self.merge_facets(search_results["facets"], results_from_broker["facets"])
-                search_results["search_facets"] = self.merge_search_facets(search_results["search_facets"], results_from_broker["search_facets"])
+        #TODO: check if this is still needed, for now it does not work on CKAN 2.10.0
+        #if context.view == "read":
+        #    results_from_broker = self.retrieve_results_from_broker(search_params)
+        #    if len(results_from_broker) > 0:
+        #        search_results["results"].extend(results_from_broker["results"])
+        #        search_results["count"] += results_from_broker["count"]
+        #        search_results["facets"] = self.merge_facets(search_results["facets"], results_from_broker["facets"])
+        #        search_results["search_facets"] = self.merge_search_facets(search_results["search_facets"], results_from_broker["search_facets"])
         else:
             pass
 
