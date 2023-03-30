@@ -16,7 +16,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # http://packaging.python.org/en/latest/tutorial.html#version
-    version='1.0.9',
+    version='1.0.10',
 
     description='''IDS data model extension for CKAN''',
     long_description=long_description,
@@ -90,6 +90,7 @@ setup(
         trusts_harvester=ckanext.ids.harvester:TrustsHarvester
         trusts_recommender=ckanext.ids.plugin:TrustsRecommenderPlugin
         trusts_blockchain=ckanext.ids.plugin:TrustsBlockchainPlugin
+        trusts_dev=ckanext.ids.plugin:DevPlugin
         [babel.extractors]
         ckan = ckan.lib.extract:extract_ckan
     ''',

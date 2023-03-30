@@ -11,13 +11,12 @@ from ckanext.ids.dataspaceconnector.idsapi import IdsApi
 
 log = logging.getLogger("ckanext.ids.dsc.subscribe")
 
-consumerUrl = toolkit.config.get('ckanext.ids.trusts_local_dataspace_connector_url') + ":" + toolkit.config.get('ckanext.ids.trusts_local_dataspace_connector_port')
-username = toolkit.config.get('ckanext.ids.trusts_local_dataspace_connector_username')
-password = toolkit.config.get('ckanext.ids.trusts_local_dataspace_connector_password')
-consumer_alias = consumerUrl
-
-consumer = IdsApi(consumerUrl, auth=(username, password))
-local_node = toolkit.config.get("ckanext.ids.trusts_local_dataspace_connector_url")
+consumerUrl = None
+local_node = None
+consumer = None
+username = None
+password = None
+consumer_alias = None
 
 
 class Subscription:
@@ -35,6 +34,13 @@ class Subscription:
         self.offer_url = offer_url
         self.agreement = agreement
         self.user_email = user_email
+        consumerUrl = toolkit.config.get('ckanext.ids.trusts_local_dataspace_connector_url') + ":" + toolkit.config.get('ckanext.ids.trusts_local_dataspace_connector_port')
+        username = toolkit.config.get('ckanext.ids.trusts_local_dataspace_connector_username')
+        password = toolkit.config.get('ckanext.ids.trusts_local_dataspace_connector_password')
+        consumer_alias = consumerUrl
+
+        consumer = IdsApi(consumerUrl, auth=(username, password))
+        local_node = toolkit.config.get("ckanext.ids.trusts_local_dataspace_connector_url")
 
         parsed_url = urlparse(offer_url)
         self.provider_alias = parsed_url.scheme + "://" + parsed_url.netloc

@@ -283,7 +283,7 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
                search_results["count"] = results_from_broker["count"]
                search_results["facets"] = results_from_broker["facets"]
                search_results["search_facets"] = self.retrieve_facet_labels(results_from_broker["search_facets"])
-        #TODO: check if this is still needed, for now it does not work on CKAN 2.10.0
+        #TODO: check if this is still needed, for now it does not work on CKAN 2.10.0 sss
         #if context.view == "read":
         #    results_from_broker = self.retrieve_results_from_broker(search_params)
         #    if len(results_from_broker) > 0:
@@ -417,3 +417,38 @@ class TrustsRecommenderPlugin(plugins.SingletonPlugin):
 
 class TrustsBlockchainPlugin(plugins.SingletonPlugin):
     pass
+
+
+class DevPlugin(plugins.SingletonPlugin):
+    """Development plugin.
+    This plugin provides:
+    - Start remote debugger (if correct library is present) during update_config call
+    """
+
+    plugins.implements(plugins.IConfigurer, inherit=True)
+
+    def update_config(self, config):
+        self._start_debug_client(config)
+
+    def _start_debug_client(self, config):
+        try:
+            log.info("Trying to load the pydevd library.")
+            import pydevd
+        except ImportError:
+            log.error("Failed to load the pydedv library.")
+            pass
+
+        host_ip = config.get('debug.remote.host.ip', '172.20.0.1')
+        host_port = config.get('debug.remote.host.port', '64342')
+        stdout = toolkit.asbool(config.get('debug.remote.stdout_to_server', 'True'))
+        stderr = toolkit.asbool(config.get('debug.remote.stderr_to_server', 'True'))
+        suspend = toolkit.asbool(config.get('debug.remote.suspend', 'False'))
+
+        try:
+            log.info("Initiating remote debugging session to {}:{}".format(host_ip, host_port))
+            pydevd.settrace(host_ip, port=int(host_port), stdoutToServer=stdout, stderrToServer=stderr, suspend=suspend)
+            log.info("Successfully started debugging session...")
+        except NameError:
+            log.warning("debug.enabled set to True, but pydevd is missing.")
+        except SystemExit:
+            log.warning("Failed to connect to debug server; is it started?")
