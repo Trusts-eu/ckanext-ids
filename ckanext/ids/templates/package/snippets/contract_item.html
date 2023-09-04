@@ -1,6 +1,6 @@
 <li class="resource-item" data-id="{{ contract.id }}">
     {% set contract_url = url if not 'external_provider_name' in pkg else "#" %}
-    {% set policies = h.string_to_json(contract.additional.policies) %}
+    {% set policies = h.string_to_json(contract.policies) %}
     {% block contract_item_title %}
         <a class="heading" href="{{ contract_url }}" title="{{ contract.title }}">
             {{ contract.title    }}
