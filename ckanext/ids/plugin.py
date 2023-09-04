@@ -30,7 +30,8 @@ from ckanext.ids.helpers import check_if_contract_offer_exists, has_more_facets,
 from ckanext.scheming.helpers import scheming_get_schema, scheming_field_by_name
 from ckanext.vocabularies.helpers import skos_choices_sparql_helper, skos_choices_get_label_by_value
 
-from ckan.logic import validators as core_validators
+## Take a look in https://github.com/ckan/ckan/issues/5865 and https://github.com/ckan/ckan/blob/master/ckanext/activity/logic/validators.py
+#from ckan.logic import validators as core_validators
 
 # ToDo make sure this logger is set higher
 log = logging.getLogger("ckanext")
@@ -91,8 +92,8 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
         toolkit.add_resource('assets',
                              'ckanext-ids')
 
-        core_validators.object_id_validators['created contract'] = core_validators.package_id_exists
-        core_validators.object_id_validators['pushed to dataspace connector'] = core_validators.package_id_exists
+        #core_validators.object_id_validators['created contract'] = core_validators.package_id_exists
+        #core_validators.object_id_validators['pushed to dataspace connector'] = core_validators.package_id_exists
 
     def update_config_schema(self, schema):
         ignore_missing = toolkit.get_validator('ignore_missing')

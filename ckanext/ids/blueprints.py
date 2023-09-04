@@ -304,7 +304,7 @@ def push_to_dataspace_connector(data):
         log.warn(message)
         return result
 
-    create_pushed_to_dataspace_connector_activity(context, data["id"])
+    #create_pushed_to_dataspace_connector_activity(context, data["id"])
     message = "Asset successfully pushed to the TRUSTS Platform"
     result = {"pushed": True, "message": message}
     log.info(message)
@@ -502,7 +502,7 @@ def publish_action(id):
     log.info("Sending resource to broker")
     bs = local_connector.send_resource_to_broker(resource_uri=resource_id)
     log.info("Resource was sent to broker.")
-    create_created_contract_activity(context, dataset["id"])
+    #create_created_contract_activity(context, dataset["id"])
     return {"broker success": bs}
 
 
