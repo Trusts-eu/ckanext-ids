@@ -105,7 +105,7 @@ def _sparl_get_all_resources(resource_type: str, fts_query: str, fq: list, facet
         ?resultUri ids:title ?title .
         ?resultUri ids:description ?description .
         ?resultUri owl:sameAs ?externalname .
-        ?resultUri ids:standardLicense ?license .
+        OPTIONAL {  ?resultUri ids:standardLicense ?license . }
         OPTIONAl {  ?resultUri ids:created ?creationDateTemp . }
         BIND (str(coalesce(?creationDateTemp, "Not Specified")) as ?creationDate)
         FILTER (!regex(str(?externalname),\"""" + config.get(
@@ -431,8 +431,6 @@ def clean_multilang(astring: str):
 def graphs_to_ckan_result_format(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
     resource_graphs = [x for x in g if x["@type"] == "ids:Resource"]
-    if "theme" not in resource_graphs[0].keys():
-        return None
     representation_graphs = [x for x in g if
                              x["@type"] == "ids:Representation"]
     artifact_graphs = [x for x in g if x["@type"] == "ids:Artifact"]
@@ -470,20 +468,21 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
 
     packagemeta = deepcopy(empty_result)
     packagemeta["id"] = resource_uri
-    packagemeta["license_id"] = resource_graphs[0][
-        "standardLicense"] if "standardLicense" in resource_graphs[0] else None
-    packagemeta["license_url"] = resource_graphs[0][
-        "standardLicense"] if "standardLicense" in resource_graphs[0] else None
-    packagemeta["license_title"] = resource_graphs[0][
-        "standardLicense"] if "standardLicense" in resource_graphs[0] else None
-    packagemeta["metadata_created"] = resource_graphs[0]["created"]
-    packagemeta["metadata_modified"] = resource_graphs[0]["modified"]
-    packagemeta["name"] = clean_multilang(resource_graphs[0]["title"])
-    packagemeta["title"] = clean_multilang(resource_graphs[0]["title"])
-    packagemeta["type"] = resource_graphs[0]["asset_type"].split("/")[
+    resource_graph = resource_graphs[0]
+    packagemeta["license_id"] = resource_graph[
+        "standardLicense"] if "standardLicense" in resource_graph else None
+    packagemeta["license_url"] = resource_graph[
+        "standardLicense"] if "standardLicense" in resource_graph else None
+    packagemeta["license_title"] = resource_graph[
+        "standardLicense"] if "standardLicense" in resource_graph else None
+    packagemeta["metadata_created"] = resource_graph["created"]
+    packagemeta["metadata_modified"] = resource_graph["modified"]
+    packagemeta["name"] = clean_multilang(resource_graph["title"])
+    packagemeta["title"] = clean_multilang(resource_graph["title"])
+    packagemeta["type"] = resource_graph["asset_type"].split("/")[
         -1].lower()
-    packagemeta["theme"] = resource_graphs[0]["theme"].split("/")[-1]
-    packagemeta["version"] = resource_graphs[0]["version"]
+    packagemeta["theme"] =resource_graph["theme"].split("/")[-1] if "theme" in resource_graph else None
+    packagemeta["version"] = resource_graph["version"]
 
     # These are the values we will use in succesive steps
     packagemeta["external_provider_name"] = organization_name
