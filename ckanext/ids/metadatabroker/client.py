@@ -431,8 +431,6 @@ def clean_multilang(astring: str):
 def graphs_to_ckan_result_format(raw_jsonld: Dict):
     g = raw_jsonld["@graph"]
     resource_graphs = [x for x in g if x["@type"] == "ids:Resource"]
-    if "theme" not in resource_graphs[0].keys():
-        return None
     representation_graphs = [x for x in g if
                              x["@type"] == "ids:Representation"]
     artifact_graphs = [x for x in g if x["@type"] == "ids:Artifact"]
