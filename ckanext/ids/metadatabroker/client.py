@@ -290,8 +290,8 @@ def graphs_to_contracts(raw_jsonld: Dict,
         r["policies"] = [
             {"type": permission_graph_dict[per]["action"].upper().replace(
                 "-", "_")} for per in perms]
-        r["contract_start"] = cg["contractStart"]
-        r["contract_end"] = cg["contractEnd"]
+        r["start"] = cg["contractStart"]
+        r["end"] = cg["contractEnd"]
         r["title"] = clean_multilang(resource_graphs[0]["title"])
         r["errors"] = {}
         r["provider_url"] = providing_base_url
