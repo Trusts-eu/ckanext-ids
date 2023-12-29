@@ -249,8 +249,8 @@ class Connector:
                 log.debug("----------------\n|\n|\n")
                 time.sleep(1)
 
-            if attempts > 3:
-                log.error("10 attempts not push to broker failed")
+            if attempts > self.broker_knows_us_limit:
+                log.error("{} attempts not push to broker failed", str(self.broker_knows_us_limit))
                 return False
 
         return response.status_code < 299

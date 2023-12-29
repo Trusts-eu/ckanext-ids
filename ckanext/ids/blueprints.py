@@ -499,11 +499,8 @@ def publish_action(id):
 
                                                           contract=contract_id)
     log.debug("Contract added to resource")
-    log.info("Sending resource to broker")
-    bs = local_connector.send_resource_to_broker(resource_uri=resource_id)
-    log.info("Resource was sent to broker.")
     #create_created_contract_activity(context, dataset["id"])
-    return {"broker success": bs}
+    return True
 
 
 @ids_actions.route('/ids/view/publish/<id>', methods=['GET', 'POST'])
