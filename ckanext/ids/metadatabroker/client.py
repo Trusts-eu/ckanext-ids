@@ -105,7 +105,7 @@ def _sparl_get_all_resources(resource_type: str, fts_query: str, fq: list, facet
         ?resultUri ids:title ?title .
         ?resultUri ids:description ?description .
         ?resultUri owl:sameAs ?externalname .
-        ?resultUri ids:standardLicense ?license .
+        OPTIONAL {  ?resultUri ids:standardLicense ?license . }
         OPTIONAl {  ?resultUri ids:created ?creationDateTemp . }
         BIND (str(coalesce(?creationDateTemp, "Not Specified")) as ?creationDate)
         FILTER (!regex(str(?externalname),\"""" + config.get(
@@ -482,7 +482,7 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
     packagemeta["title"] = clean_multilang(resource_graphs[0]["title"])
     packagemeta["type"] = resource_graphs[0]["asset_type"].split("/")[
         -1].lower()
-    packagemeta["theme"] = resource_graphs[0]["theme"].split("/")[-1]
+    packagemeta["theme"] =resource_graphs[0]["theme"].split("/")[-1] if "theme" in resource_graphs[0] else None
     packagemeta["version"] = resource_graphs[0]["version"]
 
     # These are the values we will use in succesive steps
