@@ -305,7 +305,7 @@ def push_to_dataspace_connector(data):
         return result
 
     #create_pushed_to_dataspace_connector_activity(context, data["id"])
-    message = "Asset successfully pushed to the TRUSTS Platform"
+    message = "Asset's metadata successfully pushed to the Metadata Broker"
     result = {"pushed": True, "message": message}
     log.info(message)
     return result
