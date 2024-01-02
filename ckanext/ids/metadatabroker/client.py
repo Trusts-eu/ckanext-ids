@@ -194,6 +194,7 @@ def _sparl_get_facets(resource_type: str, fts_query: str, fq: str, facet_fields,
                 ?resultUri  owl:sameAs            ?externalname .
                 FILTER (!regex(str(?externalname),\"""" + config.get('ckanext.ids.local_node_name') + """\",\"i\"))               
                 OPTIONAL { ?resultUri ?facet ?facet_value }
+                OPTIONAL { ?resultUri ids:description ?description }
                 VALUES ?facet { """ + " ".join(facet_properties) + """ } """
     facet_filters = build_facet_filters(fq, facet_fields, dataset_schema)
     for facet_filter in facet_filters:
@@ -346,14 +347,14 @@ def create_moot_ckan_result(binding):
 
     packagemeta = deepcopy(empty_result)
     packagemeta["id"] = resultUri
-    packagemeta["license_id"] = license + "LICENSE"
-    packagemeta["license_url"] = license + "LICENSE"
+    packagemeta["license_id"] = license
+    packagemeta["license_url"] = license
     packagemeta["license_title"] = lictit
     packagemeta["metadata_created"] = creationDate
     packagemeta["metadata_modified"] = datetime.datetime.now().isoformat()
     packagemeta["name"] = title
     packagemeta["title"] = title
-    packagemeta["description"] = description + "DESCRIPTION"
+    packagemeta["description"] = description
     packagemeta["type"] = assetType.split("/")[
         -1].lower()
     packagemeta["theme"] = "THEME"
@@ -371,7 +372,7 @@ def create_moot_ckan_result(binding):
     packagemeta["isopen"]: None
     packagemeta["maintainer"] = None
     packagemeta["maintainer_email"] = None
-    packagemeta["notes"] = None
+    packagemeta["notes"] = description
     packagemeta["num_tags"] = 0
     packagemeta["private"] = False
     packagemeta["state"] = "active"

@@ -284,6 +284,8 @@ class IdsResourcesPlugin(plugins.SingletonPlugin):
         context = plugins.toolkit.g
 
         if context.view == "search":
+            if context.blueprint == "dataset":
+                search_params["fq"].append("+dataset_type:dataset +state:(active)")
             results_from_broker = self.retrieve_results_from_broker(search_params)
             if len(results_from_broker) > 0:
                search_results["results"] = results_from_broker["results"]
