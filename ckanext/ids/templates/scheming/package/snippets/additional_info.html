@@ -1,0 +1,14 @@
+{% ckan_extends %}
+
+{% block package_additional_info %}
+    {{ super() }}
+    <tr>
+        <th scope="row" class="dataset-label">Time Created</th>
+        <td class="dataset-details">{{ pkg_dict["metadata_created"] }}</td>
+    </tr>
+    <tr>
+        <th scope="row" class="dataset-label">Time Updated</th>
+        <td class="dataset-details">{{ pkg_dict["metadata_modified"] }}</td>
+    </tr>
+
+{% endblock %}

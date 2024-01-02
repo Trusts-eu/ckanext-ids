@@ -481,7 +481,21 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
     packagemeta["title"] = clean_multilang(resource_graphs[0]["title"])
     packagemeta["type"] = resource_graphs[0]["asset_type"].split("/")[
         -1].lower()
-    packagemeta["theme"] =resource_graphs[0]["theme"].split("/")[-1] if "theme" in resource_graphs[0] else None
+
+    schema_fields = scheming_get_schema("dataset", packagemeta["type"], True)
+    excluded_fields = [
+        'id',
+        'title',
+        'name',
+        'notes',
+        'tag_string',
+        'license_id',
+        'owner_org',
+    ]
+    for field in schema_fields["dataset_fields"]:
+        field_name = field["field_name"]
+        if field_name not in excluded_fields and field_name in resource_graphs[0]:
+            packagemeta[field_name] = clean_multilang(resource_graphs[0][field_name])
     packagemeta["version"] = resource_graphs[0]["version"]
 
     # These are the values we will use in succesive steps
@@ -496,7 +510,7 @@ def graphs_to_ckan_result_format(raw_jsonld: Dict):
     packagemeta["isopen"]: None
     packagemeta["maintainer"] = None
     packagemeta["maintainer_email"] = None
-    packagemeta["notes"] = None
+    packagemeta["notes"] = clean_multilang(resource_graphs[0]["description"])
     packagemeta["num_tags"] = 0
     packagemeta["private"] = False
     packagemeta["state"] = "active"

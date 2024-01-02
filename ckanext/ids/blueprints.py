@@ -914,5 +914,6 @@ def contracts_remote():
     c.data = dataset
     return toolkit.render('package/contracts_external.html',
                           extra_vars={
-                              u'pkg_dict': dataset
+                              u'pkg_dict': dataset,
+                              u'dataset_type': dataset["type"]
                           })
