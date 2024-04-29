@@ -2,6 +2,7 @@ import copy
 import datetime
 import json
 import logging
+import uuid
 from collections import defaultdict
 from urllib.parse import urlsplit
 
@@ -27,7 +28,7 @@ from ckanext.ids.dataspaceconnector.subscribe import Subscription
 from ckanext.ids.metadatabroker.client import graphs_to_artifacts
 from ckanext.ids.metadatabroker.client import graphs_to_ckan_result_format
 from ckanext.ids.metadatabroker.client import graphs_to_contracts
-from ckanext.ids.model import IdsResource, IdsAgreement, IdsSubscription
+from ckanext.ids.model import IdsResource, IdsAgreement, IdsSubscription, WorkflowExecution
 from ckanext.ids.activity import create_pushed_to_dataspace_connector_activity, create_created_contract_activity
 
 #dtheiler start
@@ -759,6 +760,64 @@ def unsubscribe():
     subscription = IdsSubscription.get(subscription_url)
     subscription.delete()
 
+@ids_actions.route('/ids/actions/agreement/<id>/workflows', methods=['GET'])
+def workflow_executions_view(id):
+    local_connector = Connector()
+    local_dsc_api = local_connector.get_resource_api()
+    agreement_uri = local_connector.url + "/api/agreements/" + id
+    agreement = IdsAgreement.get(agreement_uri)
+    artifacts = local_dsc_api.get_artifacts_for_agreement(agreement_uri)
+    service_artifact = [artifact for artifact in artifacts["_embedded"]["artifacts"] if artifact["title"]=="service_base_access_url"][0]
+    workflows = agreement.get_workflows()
+    return toolkit.render("package/workflows.html",
+                          extra_vars={
+                              u'pkg_dict': {"type":"dataset", "name":"noname"},
+                              u'agreement':id,
+                              u'workflows':workflows,
+                              u'artifacts':artifacts,
+                              u'service_artifact':service_artifact
+
+                          })
+
+@ids_actions.route('/ids/actions/trigger_workflow', methods=['POST'])
+def workflow_trigger():
+
+    agreement_id = request.form["agreementId"]
+    workflow_service_url = request.form["workflowTriggerArtifactId"]
+    log.debug("Creating workflow Execution")
+    local_connector = Connector()
+    local_dsc_api = local_connector.get_resource_api()
+    workflow_definition = local_dsc_api.get_data("http://service-consumer:8282" + "/api/artifacts/a6ce9802-e324-443b-ae82-c5fd61ad6839")
+    files = {
+        "workflow":("workflow.yml", workflow_definition.text, "application/octet-stream")
+    }
+    workflow_execution_response = local_dsc_api.post_data(artifact=workflow_service_url, proxyPath="/submit", proxyFiles=files)
+    agreement = IdsAgreement.get("http://service-consumer:8282" + "/api/agreements/" + agreement_id)
+    workflow_execution_object = workflow_execution_response.json()
+    workflow_execution = WorkflowExecution(str(uuid.uuid4()), agreement, None, workflow_execution_object["metadata"]["name"])
+    log.debug("Workflow execution created!")
+    workflow_execution.save()
+    log.debug("Worklfow execution persisted!")
+    return "True"
+
+@ids_actions.route('/ids/actions/service_access', methods=['POST', 'GET'])
+def service_access():
+
+    service_access_url = request.args["service_access_url"]
+    workflow_name = request.args["workflowname"]
+    proxy_path = request.args["proxypath"]
+    local_connector = Connector()
+    local_dsc_api = local_connector.get_resource_api()
+    parameters = {"workflowname":workflow_name}
+    data_response = local_dsc_api.get_data(service_access_url,proxyPath=proxy_path, parameters=parameters)
+    response = Response(
+        stream_with_context(data_response.iter_content(chunk_size=1024)),
+        content_type=data_response.headers.get("Content-Type"),
+        status=data_response.status_code
+    )
+    response.headers["Content-Disposition"] = "attachment;filename="+proxy_path
+    return response
+
 
 def create_external_package(data):
     # get clean data from the form, data will hold the common meta for all resources
@@ -822,12 +881,6 @@ def contracts_remote():
     context = {'model': model, 'session': model.Session,
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
-
-    # ToDo For now it assumes the DSC is accessible in the same hostname
-    # as the CKAN, but with port 8282
-    _dscbaseurl = config.get("ckan.site_url")
-    _dsc_hostname = urlsplit(_dscbaseurl).hostname.split(":")[0]
-    basedscurl = _dsc_hostname + ":8282"
     log.error("-:-:-:-:~~~~~~~~~~~~~~~~------------------------------>\n\n\n")
 
     # Ger from broker info for this ID
@@ -863,13 +916,39 @@ def contracts_remote():
         local_agreements = local_resource.get_agreements()
     except AttributeError:
         local_agreements = []
+    agreements = get_agreements(local_agreements, local_connector)
+    local_artifacts = get_local_artifacts(local_agreements, local_connector)
+    if len(local_artifacts):
+        c.local_artifacts = local_artifacts
+        c.agreements=agreements
+    c.data = dataset
+    return toolkit.render('package/contracts_external.html',
+                          extra_vars={
+                              u'pkg_dict': dataset,
+                              u'dataset_type': dataset["type"]
+                          })
 
+
+def get_agreements(local_agreements, local_connector):
+    local_dsc_API = local_connector.get_resource_api()
+    agreements = []
+    for local_agreement in local_agreements:
+        agreement = local_dsc_API.get_agreement(local_agreement.id)
+        agreement["parsed_value"] = json.loads(agreement["value"])
+        agreements.append(agreement)
+    return agreements
+
+def get_local_artifacts(local_agreements, local_connector):
+    # as the CKAN, but with port 8282
+    _dscbaseurl = config.get("ckan.site_url")
+    _dsc_hostname = urlsplit(_dscbaseurl).hostname.split(":")[0]
+    basedscurl = _dsc_hostname + ":8282"
     local_dsc_API = local_connector.get_resource_api()
     local_artifacts = []
+
     for local_agreement in local_agreements:
         if local_agreement is not None:
             site_url = str(toolkit.config.get('ckan.site_url'))
-
             artifacts = local_dsc_API.get_artifacts_for_agreement(
                 local_agreement.id)
             log.debug("~~~~~~~~~~~\n|~\n|~\n|~")
@@ -891,13 +970,6 @@ def contracts_remote():
                         accessurl = \
                             site_url + "/ids/actions/get_data?artifact_id=" \
                                        "" + artifactuuid
-
-                    # log.debug("\t|\n\t\n\t|~~~~~~~~~~~>")
-                    # log.debug("\t\tartifact_uri :\t" + artifacturi)
-                    # log.debug("\t\taccessurl: \t" + accessurl)
-                    # log.debug("\t\ttitle: \t" + arttitle)
-                    # log.debug("\t\tdescription: \t" + artdesc)
-
                     artifact_description = {"url": accessurl}
                     artifact_description["title"] = arttitle
                     artifact_description["description"] = artdesc
@@ -908,12 +980,5 @@ def contracts_remote():
                         artifact_description["description"] = ar["description"]
 
                     local_artifacts.append(artifact_description)
-
-    if len(local_artifacts):
-        c.local_artifacts = local_artifacts
-    c.data = dataset
-    return toolkit.render('package/contracts_external.html',
-                          extra_vars={
-                              u'pkg_dict': dataset,
-                              u'dataset_type': dataset["type"]
-                          })
+                return local_artifacts
+    return local_artifacts

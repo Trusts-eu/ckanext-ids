@@ -1,0 +1,86 @@
+{#
+  Template variables:
+  TODO: update
+  agreements - list agreements
+  artifacts
+
+  #}
+
+{% set dataset_type = c.pkg_dict["type"] %}
+<section id="agreement-table">
+    <h2>Agreements</h2>
+    <table class="table table-stripped table-condensed table-header table-hover table-bordered">
+        <thead>
+        <tr>
+            {% block head_cells %}
+                {% block head_cell_agreement %}<th scope="col">{{ _('Agreement Id') }}</th>{% endblock %}
+                {% block head_cell_contract %}<th scope="col">{{ _('Agreement Date') }}</th>{% endblock %}
+                {% block head_cell_started %}<th scope="col">{{ _('Start') }}</th>{% endblock %}
+                {% block head_cell_ended %}<th scope="col">{{ _('End') }}</th>{% endblock %}
+                {% block head_cell_artifacts %}<th scope="col">{{ _('Actions') }}</th>{% endblock %}
+                {% block head_cell_actions %}<th scope="col">{{ _('Artifacts') }}</th>{% endblock %}
+            {% endblock head_cells %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for agreement in agreements %}
+            <tr>
+                {% block agreement_cells scoped %}
+                    {% block agreement_cell_agreement %}
+                        <td colspan="1">
+                                {{ agreement["_links"]["self"]["href"].rsplit('/', 1)[-1] }}
+                        </td>
+                    {% endblock %}
+                    {% block agreement_cell_contract %}
+                        <td colspan="1">
+                                {{ agreement["parsed_value"]["ids:contractDate"]["@value"] }}
+                        </td>
+                    {% endblock %}
+                    {% block agreement_cell_start %}
+                        <td>
+                            {{ agreement["parsed_value"]["ids:contractStart"]["@value"] }}
+                        </td>
+                    {% endblock %}
+                    {% block agreement_cell_end %}
+                        <td>
+                            {{ agreement["parsed_value"]["ids:contractEnd"]["@value"] }}
+                        </td>
+                    {% endblock  %}
+                    {% block agreement_cell_artifacts %}
+                        {% if dataset_type=="service" %}
+                            {% set selection = [] %}
+                            {% for artifact in local_artifacts if artifact["title"] == "service_base_access_url" %}{% do selection.append(artifact) %}{% endfor %}
+                            {% set workflow_access_url = selection[0]["url"] %}
+                            {% set agreement_id = agreement["_links"]["self"]["href"].rsplit('/', 1)[-1]  %}
+                            <td>
+                                <div class="btn-group-vertical" role="group">
+                                    <button onclick='triggerWorkflow("{{ "http://" + workflow_access_url }}", "{{ agreement_id }}")' class="btn btn-outline-success">{% trans %} Execute Workflow {% endtrans %}</button>
+                                    {% link_for _('Monitor Executions'), named_route='ids_actions.workflow_executions_view', id=agreement_id, class_="btn btn-outline-info" %}
+                                </div>
+                            </td>
+
+                        {% else %}
+                            <td colspan="1">
+                                <ul>
+                                    {% for artifact in local_artifacts %}
+                                        <li>
+                                            <p><b> {{ artifact["title"] }} </b> </p>
+                                            <p><b> {{ artifact["description"] }} </b> </p>
+                                            <a class="heading" href="{{ artifact["url"] }}" title="{{ artifact["url"] }}">
+                                                <p><b> {{ artifact["url"] }} </b> </p>
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                        {% endif %}
+                    {% endblock %}
+                    {% block agreement_cell_actions %}
+
+                    {% endblock %}
+                {% endblock %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>

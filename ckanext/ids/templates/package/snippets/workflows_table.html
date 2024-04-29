@@ -1,0 +1,53 @@
+{#
+  Template variables:
+  TODO: update
+  agreement_workflows - list of workflow executions
+
+  #}
+
+<section id="workflow-executions-table">
+    <h2>Workflow Executions</h2>
+    <table class="table table-stripped table-condensed table-header table-hover table-bordered">
+        <thead>
+        <tr>
+            {% block head_cells %}
+                {% block head_cell_workflow_execution %}<th scope="col">{{ _('Workflow Id') }}</th>{% endblock %}
+                {% block head_cell_started %}<th scope="col">{{ _('Start Date') }}</th>{% endblock %}
+                {% block head_cell_name %}<th scope="col">{{ _('Name') }}</th>{% endblock %}
+                {% block head_cell_actions %}<th scope="col">{{ _('Actions') }}</th>{% endblock %}
+            {% endblock head_cells %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for execution in agreement_workflows %}
+            <tr>
+                {% block execution_cells scoped %}
+                    {% block execution_cell_execution %}
+                        <td colspan="1">
+                                {{ execution.id }}
+                        </td>
+                    {% endblock %}
+                    {% block execution_cell_start %}
+                        <td colspan="1">
+                                {{ execution.created }}
+                        </td>
+                    {% endblock %}
+                    {% block execution_cell_name %}
+                        <td>
+                            {{ execution.workflow_name }}
+                        </td>
+                    {% endblock %}
+                    {% block execution_cell_actions %}
+                            <td>
+                                <div class="btn-group" role="group" aria-label="Actions">
+                                {% link_for _('View Status'), named_route="ids_actions.service_access", workflowname=execution.workflow_name, proxypath="/status", service_access_url=service_artifact["_links"]["data"]["href"], class_="btn btn-outline-info" %}
+                                {% link_for _('View logs'), named_route="ids_actions.service_access", workflowname=execution.workflow_name, proxypath="/logs", service_access_url=service_artifact["_links"]["data"]["href"], class_="btn btn-outline-warning" %}
+                                </div>
+                            </td>
+                    {% endblock %}
+                {% endblock %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>

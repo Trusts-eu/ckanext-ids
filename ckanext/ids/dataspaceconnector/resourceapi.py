@@ -187,8 +187,17 @@ class ResourceApi:
         else:
             return [obj]
 
-    def get_data(self, artifact):
-        return self.session.get(artifact + "/data")
+    def get_data(self, artifact, proxyPath="", parameters=None):
+        if not "/data" in artifact:
+            proxyPath = "/data" + proxyPath
+        return self.session.get(artifact + proxyPath, params=parameters)
+
+    def post_data(self, artifact, proxyHeaders=None, proxyBody=None, proxyFiles=None, proxyPath=None, proxyData=None):
+        path = artifact + proxyPath
+        return self.session.post(path, data=proxyData, files=proxyFiles)
+
+    def get_agreement(self, agreement):
+        return json.loads(self.session.get(agreement).text)
 
     def get_artifacts_for_agreement(self, agreement):
         return json.loads(self.session.get(agreement + "/artifacts").text)

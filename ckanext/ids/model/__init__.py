@@ -16,18 +16,24 @@ log = logging.getLogger(__name__)
 __all__ = [
     'IdsAgreement', 'ids_agreement_table',
     'IdsResource', 'ids_resource_table',
-    'IdsSubscription', 'ids_subscription_table'
+    'IdsSubscription', 'ids_subscription_table',
+    'WorkflowExecution', 'dbx_workflow_execution_table'
 ]
 
 ids_agreement_table = None
 ids_resource_table = None
 ids_subscription_table = None
+dbx_workflow_execution_table = None
 
 
 def setup():
     if ids_subscription_table is None:
         define_ids_tables()
         log.debug('IDS tables defined in memory')
+
+    if dbx_workflow_execution_table is None:
+        define_ids_tables()
+        log.debug('DBX tables defined in memory')
 
     if not ids_agreement_table.exists():
 
@@ -41,9 +47,12 @@ def setup():
         ids_subscription_table.create()
         log.debug("IDS subscription table added.")
         pass
+    elif not dbx_workflow_execution_table.exists():
+        dbx_workflow_execution_table.create()
+        log.debug("DBX tables added.")
     else:
         from ckan.model.meta import engine
-        log.debug('IDS tables already exist')
+        log.debug('IDS and DBX tables already exist')
         # Check if existing tables need to be updated
         inspector = Inspector.from_engine(engine)
 
@@ -99,8 +108,8 @@ class IdsAgreement(IdsDomainObject):
     '''An agreement that has been made between a consumer and a provider data space connector
     '''
     def __repr__(self):
-        return '<IdsAgreement id=%s resource_id=%s user_id=%s>' % \
-               (self.id, self.resource_id, self.agreement_id, self.user_id)
+        return '<IdsAgreement id=%s resource_id=%s>' % \
+               (self.id, self.resource_id)
 
     def __str__(self):
         return self.__repr__().encode('ascii', 'ignore')
@@ -109,6 +118,16 @@ class IdsAgreement(IdsDomainObject):
         self.id = id
         self.resource_id = resource.id
         self.user_id = user
+
+    def get_workflows(self, user_id=None):
+        """ get the agreements for this agreement """
+
+        query = Session.query(WorkflowExecution).filter(WorkflowExecution.agreement_id == self.id)
+
+        if user_id is not None:
+            query = query.filter(IdsSubscription.user_id == user_id)
+
+        return query.all()
 
     def get_subscriptions(self, user_id=None):
         """ get the agreements for this agreement """
@@ -136,12 +155,30 @@ class IdsSubscription(IdsDomainObject):
         self.agreement_id = agreement.id
         self.user_id = user
 
+class WorkflowExecution(IdsDomainObject):
+    '''A workflow execution that has been initiated by a service consumer towards a service provider
+    '''
+    def __repr__(self):
+        return '<WorkflowExecution id=%s agreement_id=%s user_id=%s workflow_name=%s>' % \
+            (self.id, self.agreement_id, self.user_id, self.workflow_name)
+
+    def __str__(self):
+        return self.__repr__().encode('ascii', 'ignore')
+
+    def __init__(self, id=None, agreement=None, user=None, workflow_name=None):
+        self.id = id
+        self.user_id = user
+        self.workflow_name = workflow_name
+        self.agreement_id = agreement.id
+
+
 
 def define_ids_tables():
 
     global ids_agreement_table
     global ids_resource_table
     global ids_subscription_table
+    global dbx_workflow_execution_table
 
     ids_resource_table = Table(
         'ids_resource',
@@ -166,6 +203,15 @@ def define_ids_tables():
         Column('created', types.DateTime, default=datetime.datetime.utcnow)
     )
 
+    dbx_workflow_execution_table = Table(
+        'dbx_workflow_execution',
+        metadata,
+        Column('id', types.UnicodeText, primary_key=True),
+        Column('agreement_id', types.UnicodeText, ForeignKey('ids_agreement.id')),
+        Column('workflow_name', types.UnicodeText),
+        Column('created', types.DateTime, default=datetime.datetime.utcnow)
+    )
+
     mapper(
         IdsResource,
         ids_resource_table,
@@ -185,9 +231,18 @@ def define_ids_tables():
                 IdsSubscription,
                 lazy=True,
                 backref=u'subscription',
+            ),
+            'workflow_executions': relation(
+                WorkflowExecution,
+                lazy=True,
+                backref=u'workflow_execution',
             )}
     )
 
     mapper(IdsSubscription,
            ids_subscription_table,
+           )
+
+    mapper(WorkflowExecution,
+           dbx_workflow_execution_table,
            )
