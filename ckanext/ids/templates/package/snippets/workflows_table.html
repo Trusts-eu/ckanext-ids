@@ -41,7 +41,8 @@
                             <td>
                                 <div class="btn-group" role="group" aria-label="Actions">
                                 {% link_for _('View Status'), named_route="ids_actions.service_access", workflowname=execution.workflow_name, proxypath="/status", service_access_url=service_artifact["_links"]["data"]["href"], class_="btn btn-outline-info" %}
-                                {% link_for _('View logs'), named_route="ids_actions.service_access", workflowname=execution.workflow_name, proxypath="/logs", service_access_url=service_artifact["_links"]["data"]["href"], class_="btn btn-outline-warning" %}
+                                {% link_for _('View Logs'), named_route="ids_actions.service_access", workflowname=execution.workflow_name, proxypath="/logs", service_access_url=service_artifact["_links"]["data"]["href"], class_="btn btn-outline-warning" %}
+                                {% link_for _('Get Output'), named_route="ids_actions.service_access", workflowname=execution.workflow_name, proxypath="/output", service_access_url=service_artifact["_links"]["data"]["href"], class_="btn btn-outline-primary" %}
                                 </div>
                             </td>
                     {% endblock %}

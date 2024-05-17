@@ -14,6 +14,7 @@ import ckan.model as model
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 import requests
+import yaml
 from ckan.common import _, config
 from dateutil import tz
 from flask import Blueprint, request
@@ -79,6 +80,8 @@ log = logging.getLogger(__name__)
 
 trusts_recommender_plugin_name = "trusts_recommender"
 trusts_blockchain_plugin_name = "trusts_blockchain"
+
+input_parameter_pattern = "input-art-"
 
 def request_contains_mandatory_files():
     return request.files[
@@ -328,7 +331,6 @@ def delete_from_dataspace_connector(data):
                'user': c.user or c.author, 'auth_user_obj': c.userobj,
                }
     local_resource_dataspace_connector = Connector().get_resource_api()
-    catalog = config.get("ckanext.ids.connector_catalog_iri")
     offer = Offer(data)
     for value in data["resources"]:
         # this has also to run for every resource
@@ -339,7 +341,7 @@ def delete_from_dataspace_connector(data):
             local_resource_dataspace_connector.delete_artifact(
                 resource.artifact_iri, data={})
     if offer.offer_iri is not None:
-        local_resource_dataspace_connector.delete_offered_resource(offer)
+        local_resource_dataspace_connector.delete_offered_resource(offer.offer_iri)
     return
 
 
@@ -715,6 +717,20 @@ def get_data():
     response.headers["Content-Disposition"] = "attachment;filename="+filename
     return response
 
+@ids_actions.route('/ids/actions/get_representations', methods=['GET'])
+def get_representations():
+    local_connector = Connector()
+    local_connector_resource_api = local_connector.get_resource_api()
+    resource_uri= request.args.get("resource_uri")
+    return local_connector_resource_api.get_representations_for_resource(resource_uri)
+
+@ids_actions.route('/ids/actions/get_artifacts', methods=['GET'])
+def get_artifacts():
+    local_connector = Connector()
+    local_connector_resource_api = local_connector.get_resource_api()
+    representation_uri= request.args.get("representation_uri")
+    return local_connector_resource_api.get_artifacts_for_representation(representation_uri)
+
 # endpoint to create a subscription
 @ids_actions.route('/ids/actions/subscribe', methods=['GET'])
 def subscribe():
@@ -760,6 +776,33 @@ def unsubscribe():
     subscription = IdsSubscription.get(subscription_url)
     subscription.delete()
 
+@ids_actions.route('/ids/actions/agreement/<id>/workflow/configure')
+def workflow_configuration(id):
+    resources = []
+    local_connector = Connector()
+    local_dsc_api = local_connector.get_resource_api()
+    agreement_uri = local_connector.url + "/api/agreements/" + id
+    artifacts = local_dsc_api.get_artifacts_for_agreement(agreement_uri)
+    workflow_artifact = [artifact for artifact in artifacts["_embedded"]["artifacts"] if artifact["title"]=="workflow.yml"][0]
+    service_artifact = [artifact for artifact in artifacts["_embedded"]["artifacts"] if artifact["title"]=="service_base_access_url"][0]
+    workflow_definition = yaml.load(local_dsc_api.get_data(workflow_artifact["_links"]["self"]["href"]).text, Loader=yaml.SafeLoader)
+    input_parameters = list(filter(input_parameters_filter, workflow_definition["spec"]["arguments"]["parameters"]))
+    requested_resources = local_dsc_api.get_requested_resources(size=100)
+    offered_resources = local_dsc_api.get_offered_resources(size=100)
+    resources = list(filter(dataset_resource_filter,requested_resources["_embedded"]["resources"])) + list(filter(dataset_resource_filter,offered_resources["_embedded"]["resources"]))
+
+    resource_options = [ {"value": resource["_links"]["self"]["href"], "text": resource["title"]} for resource in resources]
+    resource_options.insert(0, {"value":"", "text":""})
+    return toolkit.render("package/workflow_configuration.html",
+                          extra_vars={
+                              u'pkg_dict': {"type":"service", "name":"configure-workflow"},
+                              u'agreement': id,
+                              u'workflow_definition': workflow_definition,
+                              u'input_parameters':input_parameters,
+                              u'resource_options':resource_options,
+                              u'service_artifact':service_artifact
+                          })
+
 @ids_actions.route('/ids/actions/agreement/<id>/workflows', methods=['GET'])
 def workflow_executions_view(id):
     local_connector = Connector()
@@ -771,33 +814,65 @@ def workflow_executions_view(id):
     workflows = agreement.get_workflows()
     return toolkit.render("package/workflows.html",
                           extra_vars={
-                              u'pkg_dict': {"type":"dataset", "name":"noname"},
+                              u'pkg_dict': {"type":"service", "name":"executions"},
                               u'agreement':id,
                               u'workflows':workflows,
                               u'artifacts':artifacts,
                               u'service_artifact':service_artifact
-
                           })
+
+def input_artifacts_filter(key):
+    if input_parameter_pattern in key:
+        return True
+    else:
+        return False
+
+def input_parameters_filter(parameter):
+    if input_parameter_pattern in parameter["name"]:
+        return True
+    else:
+        return False
+
+def dataset_resource_filter(resource):
+    #TODO: fix the mapping, there should be only one normalized value
+    if (resource["additional"]["https://www.trusts-data.eu/ontology/asset_type"] == '{@id=https://www.trusts-data.eu/ontology/Dataset}') or (resource["additional"]["https://www.trusts-data.eu/ontology/asset_type"] == 'https://www.trusts-data.eu/ontology/Dataset'):
+        return True
+    else:
+        return False
 
 @ids_actions.route('/ids/actions/trigger_workflow', methods=['POST'])
 def workflow_trigger():
 
-    agreement_id = request.form["agreementId"]
-    workflow_service_url = request.form["workflowTriggerArtifactId"]
-    log.debug("Creating workflow Execution")
     local_connector = Connector()
     local_dsc_api = local_connector.get_resource_api()
-    workflow_definition = local_dsc_api.get_data("http://service-consumer:8282" + "/api/artifacts/a6ce9802-e324-443b-ae82-c5fd61ad6839")
+
+    agreement_id = request.form["agreementId"]
+    agreement_uri = local_connector.url + "/api/agreements/" + agreement_id
+    agreement = IdsAgreement.get(agreement_uri)
+    artifacts = local_dsc_api.get_artifacts_for_agreement(agreement_uri)
+
+    workflow_service_url = request.form["workflowTriggerArtifactId"]
+    input_keys = [form_input for form_input in request.form if input_parameter_pattern in form_input]
+    log.debug("Input Keys")
+    log.debug(input_keys)
+    log.debug("Creating workflow Execution")
+    workflow_artifact = [artifact for artifact in artifacts["_embedded"]["artifacts"] if artifact["title"]=="workflow.yml"][0]
+    workflow_definition = local_dsc_api.get_data(workflow_artifact["_links"]["self"]["href"])
     files = {
         "workflow":("workflow.yml", workflow_definition.text, "application/octet-stream")
     }
+
+    for key in input_keys:
+        file = local_dsc_api.get_data(request.form[key])
+        file_description = local_dsc_api.get_artifact(request.form[key])
+        files[key] = (file_description["title"], file.content, "application/octet-stream")
     workflow_execution_response = local_dsc_api.post_data(artifact=workflow_service_url, proxyPath="/submit", proxyFiles=files)
-    agreement = IdsAgreement.get("http://service-consumer:8282" + "/api/agreements/" + agreement_id)
+
     workflow_execution_object = workflow_execution_response.json()
     workflow_execution = WorkflowExecution(str(uuid.uuid4()), agreement, None, workflow_execution_object["metadata"]["name"])
     log.debug("Workflow execution created!")
     workflow_execution.save()
-    log.debug("Worklfow execution persisted!")
+    log.debug("Workflow execution persisted!")
     return "True"
 
 @ids_actions.route('/ids/actions/service_access', methods=['POST', 'GET'])

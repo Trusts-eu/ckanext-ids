@@ -98,6 +98,7 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
     def update_config_schema(self, schema):
         ignore_missing = toolkit.get_validator('ignore_missing')
         is_boolean = toolkit.get_validator('boolean_validator')
+        is_positive_integer = toolkit.get_validator('is_positive_integer')
 
         schema.update({
             # This is an existing CKAN core configuration option, we are just
@@ -105,6 +106,7 @@ class IdsPlugin(plugins.SingletonPlugin, DefaultTranslation):
             'ckan.search.show_all_types': [ignore_missing, is_boolean],
             'ckanext.ids.connector_catalog_iri': [ignore_missing],
             'ckanext.ids.usage_control_policies': [ignore_missing]
+            #'ckan.max_resource_size': [ignore_missing, is_positive_integer]
 
         })
 

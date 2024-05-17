@@ -54,7 +54,6 @@
                             {% set agreement_id = agreement["_links"]["self"]["href"].rsplit('/', 1)[-1]  %}
                             <td>
                                 <div class="btn-group-vertical" role="group">
-                                    <button onclick='triggerWorkflow("{{ "http://" + workflow_access_url }}", "{{ agreement_id }}")' class="btn btn-outline-success">{% trans %} Execute Workflow {% endtrans %}</button>
                                     {% link_for _('Monitor Executions'), named_route='ids_actions.workflow_executions_view', id=agreement_id, class_="btn btn-outline-info" %}
                                 </div>
                             </td>

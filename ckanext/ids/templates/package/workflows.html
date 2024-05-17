@@ -33,7 +33,7 @@
 
 
 {% block primary_content_inner %}
-    <button onclick='triggerWorkflow("{{ service_artifact["_links"]["data"]["href"] }}", "{{ agreement }}")' class="btn btn-outline-success">{% trans %} Execute Workflow {% endtrans %}</button>
+    {% link_for _('Create Workflow Execution'), named_route='ids_actions.workflow_configuration', id=agreement, class_="btn btn-outline-primary" %}
     {% if workflows|length > 0  %}
         {% snippet "package/snippets/workflows_table.html", agreement_workflows=workflows, artifacts=artifacts, service_artifact=service_artifact %}
     {% else %}

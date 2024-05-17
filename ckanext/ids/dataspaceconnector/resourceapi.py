@@ -199,6 +199,16 @@ class ResourceApi:
     def get_agreement(self, agreement):
         return json.loads(self.session.get(agreement).text)
 
+    def get_requested_resources(self, page=0, size=10):
+        parameters = {"page":page, "size":size}
+        url = self.recipient + "/api/requests"
+        return json.loads(self.session.get(url, params=parameters).text)
+
+    def get_offered_resources(self, page=0, size=10):
+        parameters = {"page":page, "size":size}
+        url = self.recipient + "/api/offers"
+        return json.loads(self.session.get(url, params=parameters).text)
+
     def get_artifacts_for_agreement(self, agreement):
         return json.loads(self.session.get(agreement + "/artifacts").text)
 
@@ -207,6 +217,12 @@ class ResourceApi:
 
     def get_requests_for_representation(self, representation):
         return json.loads(self.session.get(representation + "/requests").text)
+
+    def get_representations_for_resource(self, resource):
+        return json.loads(self.session.get(resource + "/representations").text)
+
+    def get_artifacts_for_representation(self, representation):
+        return json.loads(self.session.get(representation + "/artifacts").text)
 
     def descriptionRequest(self, recipient, elementId):
         url = self.recipient + "/api/ids/description"

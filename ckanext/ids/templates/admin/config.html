@@ -1,0 +1,23 @@
+{% ckan_extends %}
+
+{% import 'macros/form.html' as form %}
+
+{% block admin_form %}
+
+    {{ super() }}
+
+    <h3>Custom configuration options </h3>
+
+    {#{{ form.input('ckan.max_resource_size', id='field-ckan.max_resource_size', label=_('Max Resource Size'), value=data['ckan.max_resource_size'], error=errors['ckan.max_resource_size']) }}#}
+
+
+{% endblock %}
+
+
+{% block admin_form_help %}
+
+    {{ super() }}
+
+
+
+{% endblock %}

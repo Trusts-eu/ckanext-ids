@@ -1,0 +1,187 @@
+{% extends "package/read.html" %}
+
+{% import 'macros/form.html' as form %}
+
+{%- set schema = h.scheming_get_dataset_schema(dataset_type) -%}
+
+{% block package_notes %}
+{% endblock %}
+
+{% block package_resources %}
+{% endblock %}
+
+{% block package_additional_info %}
+{% endblock %}
+
+
+{% block content_action %}
+{% endblock %}
+
+{% block content_primary_nav %}
+{% endblock %}
+
+{% block secondary_content %}
+    <section class="module module-narrow module-shallow">
+        <h2 class="module-heading"><i
+                class="icon-info-sign fa fa-info-circle"></i>{% trans %}Workflow Configuration {%
+                endtrans %}</h2>
+        <div class="module-content">
+            <p>
+                Here you can specify which assets you can use on a workflow execution. You can select assets from your own asset inventory or from your requested assets inventory (acquired datasets).
+                If a requested asset is not shown on the list of available assets, then this indicates that the contract has probably expired and you need to make a new agreement.
+
+            </p>
+        </div>
+    </section>
+{% endblock %}
+
+
+{% block primary_content_inner %}
+    <p>
+        The workflow definition you want to execute defines the following input parameters. Please, specify which assets to use for each. Then you can create an execution.
+    </p>
+
+    <table class="table table-stripped table-condensed table-header table-hover table-bordered">
+        <thead>
+        <tr>
+            {% block head_cells %}
+                {% block head_cell_input_parameter_key %}<th scope="col">{{ _('Input Parameter Key') }}</th>{% endblock %}
+                {% block head_cell_resource %}<th scope="col">{{ _('Resource') }}</th>{% endblock %}
+                {% block head_cell_representation %}<th scope="col">{{ _('Representation') }}</th>{% endblock %}
+                {% block head_cell_artifact %}<th scope="col">{{ _('Artifact') }}</th>{% endblock %}
+            {% endblock head_cells %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for input_parameter in input_parameters %}
+            <tr>
+                {% block configuration_cells scoped %}
+                    {% block configuration_cell_input_parameter_key %}
+                        <td colspan="1">
+                            {{ input_parameter.name }}
+                        </td>
+                    {% endblock %}
+                    {% block configuration_cell_resource %}
+                        <td id="resource-{{ input_parameter.name }}" colspan="1">
+                            {{ form.select('select-resource-' + input_parameter.name , label=_('Resource'), options=resource_options, attrs={"onchange":"getRepresentations(this)", "aria-parameter-name":input_parameter.name}) }}
+                        </td>
+                    {% endblock %}
+                    {% block configuration_cell_representation %}
+                        <td id="representation-{{ input_parameter.name }}" colspan="1">
+                            {{ form.select('select-representation-' + input_parameter.name, label=_('Representation'), options=[], attrs={"disabled":"", "onchange":"getArtifacts(this)", "aria-parameter-name":input_parameter.name}) }}
+                        </td>
+                    {% endblock %}
+                    {% block configuration_cell_artifact %}
+                        <td id="artifact-{{ input_parameter.name }}" colspan="1">
+                            {{ form.select('select-artifact-' + input_parameter.name, label=_('Artifact'), options=[], attrs={"disabled":"", "onchange":"updateSelectedArtifacts(this)", "aria-parameter-name":input_parameter.name}) }}
+                        </td>
+                    {% endblock %}
+                {% endblock %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <button id="workflow-trigger-button" onclick='triggerWorkflow("{{ service_artifact["_links"]["data"]["href"] }}", "{{ agreement }}")' class="btn btn-outline-success">
+        <span id="workflow-trigger-spinner" class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+        {% trans %} Execute Workflow {% endtrans %}
+    </button>
+
+
+    <script>
+
+        var parameters_artifacts = [];
+
+        function triggerWorkflow(triggerArtifactId, agreementId) {
+            var data = {
+                agreementId: agreementId,
+                workflowTriggerArtifactId: triggerArtifactId,
+
+            }
+            var parameters = Object.assign({}, ...parameters_artifacts)
+            sendTriggerData({...data, ...parameters})
+        }
+
+        function getRepresentations(selectObject){
+            var parameterName = selectObject.attributes["aria-parameter-name"].value
+            var targetElementName = 'select-representation-'+parameterName
+            var value = selectObject.value;
+            $("#" + targetElementName ).empty();
+            var selectElement = document.getElementById(targetElementName);
+            selectElement.disabled = false;
+            selectElement.add(new Option())
+            var representationsJSON = sendGetRepresentations({"resource_uri":value})
+            for(let representation of representationsJSON._embedded.representations.entries()){
+                console.log(representation)
+                selectElement.add(new Option(representation[1]._links.self.href, representation[1]._links.self.href))
+            }
+        }
+
+        function getArtifacts(selectObject){
+            var parameterName = selectObject.attributes["aria-parameter-name"].value
+            var targetElementName = 'select-artifact-'+parameterName
+            var value = selectObject.value;
+            $("#" + targetElementName ).empty();
+            var selectElement = document.getElementById(targetElementName);
+            selectElement.disabled = false;
+            selectElement.add(new Option())
+            var artifactsJSON = sendGetArtifacts({"representation_uri":value})
+            for(let artifact of artifactsJSON._embedded.artifacts.entries()){
+                selectElement.add(new Option(artifact[1].title, artifact[1]._links.self.href))
+            }
+         }
+
+
+
+        function myFunction(value, index, array) {
+            return Object.keys(value).includes(this.valueOf());
+        }
+
+        function updateSelectedArtifacts(selectObject){
+            var parameterName = selectObject.attributes["aria-parameter-name"].value
+            var previous_index = parameters_artifacts.findIndex(myFunction, parameterName)
+            if(previous_index>-1){
+                parameters_artifacts.splice(previous_index, previous_index+1)
+            }
+            parameters_artifacts.push({[parameterName]:selectObject.value})
+            console.log(parameters_artifacts);
+        }
+
+        function sendTriggerData( data ) {
+            const XHR = new XMLHttpRequest(),
+                FD  = new FormData();
+
+            // Start spinner
+            $("#workflow-trigger-spinner").show();
+            // Push our data into our FormData object
+            for( name in data ) {
+                FD.append( name, data[ name ] );
+            }
+
+            // Define what happens on successful data submission
+            XHR.addEventListener( 'load', function( event ) {
+                console.debug( 'Workflow was triggered succesfully', event );
+                window.location=document.referrer;
+            } );
+
+            // Define what happens in case of error
+            XHR.addEventListener(' error', function( event ) {
+                console.debug( 'Oops! Something went wrong. Workflow execution failed.' );
+            } );
+
+            // Set up our request
+            XHR.open( 'POST', '/ids/actions/trigger_workflow' );
+
+            // Send our FormData object; HTTP headers are set automatically
+            XHR.send( FD );
+        }
+
+        function sendGetRepresentations( data ) {
+            return $.ajax({type: "GET", url: "/ids/actions/get_representations", dataType:"json", data:data, async: false}).responseJSON;
+        }
+
+        function sendGetArtifacts   ( data ) {
+            return $.ajax({type: "GET", url: "/ids/actions/get_artifacts", dataType:"json", data:data, async: false}).responseJSON;
+        }
+    </script>
+
+{% endblock %}
